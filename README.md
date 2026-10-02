@@ -22,9 +22,10 @@ fork's git history.
 | Plugin server entry (`Plugin.define` + RPC `omo.*`) | Ported, runtime-verified |
 | Tools (glob/grep) + hooks | Ported, runtime-verified |
 | Client migration (`@opencode-ai/sdk` → `@opencode/client`) | Ported, runtime-verified |
-| Agents (10 OMC agents + subagent dispatch) | Ported, runtime-verified |
+| Agents (11 OMC agents incl. Prometheus + subagent dispatch) | Ported, runtime-verified |
 | Orchestration (background tasks, continuation, todos) | Ported, runtime-verified |
 | MCP injection + skills resolution + config migration | Ported, runtime-verified |
+| Builtin slash commands (goal, refactor, ulw-execute, start-work, stop-continuation, remove-ai-slops, handoff, hyperplan) | Restored as V2 Markdown commands (`.agents/command/` + `.opencode/command/`); one-shot — V2 has no boulder continuation hook |
 | TUI binding layer (sidebar, btw-side, native nudge) | Ported (real-terminal render = post-cutover observation item) |
 | Static gates (zero `@opencode-ai/*`, strict TS, pinned deps) | Green |
 | Runtime parity matrix | 19 PASS + 5 PASS* (documented limitations) — [docs/parity-matrix.md](./docs/parity-matrix.md) |
