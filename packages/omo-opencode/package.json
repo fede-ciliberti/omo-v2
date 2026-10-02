@@ -45,7 +45,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@opencode/client": "2.0.20",
-    "@opencode/plugin": "2.0.20"
+    "@opencode/client": "2.0.22",
+    "@opencode/plugin": "2.0.22"
   }
 }

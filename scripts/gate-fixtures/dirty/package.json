@@ -2,6 +2,6 @@
   "name": "dirty-fixture",
   "dependencies": {
     "@opencode-ai/plugin": "^1.18.31",
-    "@opencode/plugin": "^2.0.20"
+    "@opencode/plugin": "^2.0.22"
   }
 }

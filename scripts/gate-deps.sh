@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gate: package.json deps must not use @opencode-ai/* (V1 line) and every
-# @opencode/* dependency must be pinned EXACTLY to 2.0.20 (no ^ or ~).
+# @opencode/* dependency must be pinned EXACTLY to 2.0.22 (no ^ or ~).
 # Usage: scripts/gate-deps.sh [target]   (default: packages/)
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -16,7 +16,7 @@ for (const s of secs) {
   const d = p[s] || {};
   for (const [k, v] of Object.entries(d)) {
     if (k.startsWith("@opencode-ai/")) errs.push(`forbidden V1 dep ${k}@${v}`);
-    if (k.startsWith("@opencode/") && v !== "2.0.20") errs.push(`${k} must be exact 2.0.20, found ${v}`);
+    if (k.startsWith("@opencode/") && v !== "2.0.22") errs.push(`${k} must be exact 2.0.22, found ${v}`);
   }
 }
 if (errs.length) { console.error(process.argv[1] + ": " + errs.join("; ")); process.exit(1); }
