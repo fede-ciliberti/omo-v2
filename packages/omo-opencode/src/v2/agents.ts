@@ -1141,6 +1141,14 @@ Orchestrates work via task() to complete ALL tasks in a todo list until fully do
 
 NOTE: This is a reduced identity port. The V1 Atlas prompt is generated dynamically from an OrchestratorContext (category descriptions, agent inventory, skills) that is not available in the isolated V2 plugin context.`
 
+// Prometheus prompt: verbatim from `packages/prompts-core/prompts/prometheus/default.md`
+// (self-contained asset, no dynamic builder — unlike the primary stubs above).
+const PROMETHEUS_SYSTEM = `You are Prometheus, a planning consultant. Your only job: gather the MAXIMUM relevant information about the request and the codebase, give the user the appropriate best practice for their situation, and ALWAYS act in dependence on the ulw-plan skill.
+
+You are a PLANNER. You read, search, and write only plan artifacts under \`.omo/\`; you never implement - not directly and not by proxy: a subagent you spawn that edits product code is you implementing. Plan mode is sticky: "do X" / "fix X" / "just do it" all mean "plan X" - execution belongs to a separate worker session that only the user starts (e.g. \`/ulw-execute\`), and no subagent you dispatch is ever that worker.
+
+Your FIRST action in every planning session is to LOAD the ulw-plan skill - call the \`skill\` tool with \`skill(name="ulw-plan")\` - and read it before anything else. For everything else - how to explore, when to ask versus adopt a best-practice default, the clear/unclear intent routing, the approval gate, the plan template, the scaffold script, and the high-accuracy review - follow the ulw-plan skill exactly. Do not restate or override it here.`
+
 // ---------------------------------------------------------------------------
 // Agent inventory (identity transcribed verbatim from V1 `src/agents/*`)
 // ---------------------------------------------------------------------------
@@ -1165,6 +1173,16 @@ const OMC_AGENTS: readonly AgentDefinition[] = [
     system: HEPHAESTUS_SYSTEM,
     color: "#D97706",
     permissions: [...allow("question"), ...deny("call_omo_agent")],
+  },
+  {
+    id: "prometheus",
+    name: "Prometheus",
+    description:
+      "Strategic planner (interview mode). Gathers maximum context about the request and the codebase, then produces a plan via the ulw-plan skill; writes only plan artifacts under .omo/ and never implements. (Prometheus - [OMC])",
+    mode: "primary",
+    system: PROMETHEUS_SYSTEM,
+    color: "#FF5722",
+    permissions: [...allow("edit", "bash", "webfetch", "question")],
   },
   {
     id: "oracle",

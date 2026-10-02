@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from "node:fs"
-import { join, relative, resolve, sep } from "node:path"
+import { isAbsolute, join, relative, resolve, sep } from "node:path"
 import { Plugin } from "@opencode/plugin"
 import { z } from "zod"
 
@@ -379,6 +379,14 @@ function recordActivity(kind: string, detail: string): void {
 // Registration
 // ---------------------------------------------------------------------------
 
+export function isAllowedPrometheusFile(filePath: string, workspaceRoot: string): boolean {
+  const resolved = resolve(workspaceRoot, filePath)
+  const rel = relative(workspaceRoot, resolved)
+  const insideWorkspace = !rel.startsWith("..") && !isAbsolute(rel)
+  const insideOmo = /(^|[/\\])\.omo([/\\]|$)/i.test(rel)
+  return insideWorkspace && insideOmo && resolved.toLowerCase().endsWith(".md")
+}
+
 export async function registerToolsAndHooks(ctx: PluginContext): Promise<() => Promise<void>> {
   const directory = ctx.location.directory
 
@@ -432,6 +440,23 @@ export async function registerToolsAndHooks(ctx: PluginContext): Promise<() => P
     if (input.tool.toLowerCase().startsWith("mcp_")) {
       input.tool = input.tool.replace(/^mcp_/i, "")
     }
+  })
+
+  // V1 `prometheus-md-only`: Prometheus may only write `.md` plan files under `.omo/`.
+  const PROMETHEUS_BLOCKED_TOOLS = new Set(["write", "edit", "apply_patch"])
+  await ctx.tool.hook("execute.before", (input) => {
+    if (input.agent !== "prometheus") return
+    if (!PROMETHEUS_BLOCKED_TOOLS.has(input.tool.toLowerCase())) return
+    const args = input.input as Record<string, unknown> | undefined
+    const filePath = (args?.filePath ?? args?.path ?? args?.file) as string | undefined
+    if (filePath === undefined) return
+    if (isAllowedPrometheusFile(filePath, directory)) return
+    throw new Error(
+      `[prometheus-md-only] Prometheus is a planning agent. File operations are restricted to .omo/*.md plan files only. ` +
+        `Do NOT route this change through a subagent either - delegated implementation is still implementation. ` +
+        `Record the intended change as a todo in the plan; implementation starts only when the user runs /start-work. ` +
+        `Attempted to modify: ${filePath}.`,
+    )
   })
 
   await ctx.tool.hook("execute.after", (input) => {
