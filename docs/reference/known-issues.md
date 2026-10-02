@@ -211,3 +211,15 @@ BLOCKER-4 is resolved in v4.2.1. Delegated child sessions now retain the first p
 - **Likely trigger**: Upstream Anthropic filtering appears sensitive to the literal string `opencode` in custom project rules, system prompt text, or OMO's legacy prompt identifiers.
 - **Workaround**: In user-controlled project files such as `AGENTS.md`, prefer `oh-my-openagent`, `OMO`, or `OpenCode` wording instead of the lowercase literal `opencode` when targeting Anthropic subscription providers.
 - **Status**: Open. Tracked at https://github.com/code-yeongyu/oh-my-openagent/issues/3435. The runtime prompt-identity cleanup still needs maintainer direction, so this workaround does not close the underlying issue.
+
+## Local (V2 port) — accepted per-agent config gaps after the `omo.jsonc` migration
+
+- **Affects**: This fork's V2-only environment (`~/.local/share/opencode-v2/`) after migrating the user config from `~/.omo/omo.jsonc` into `~/.local/share/opencode-v2/config/opencode/opencode.json`.
+- **Symptom**: `~/.omo/omo.jsonc` declares per-agent and per-category settings that the V2 port has no config field for. The migration keeps the model routing but silently drops the rest, so agents lose their tuning unless it is re-expressed with V2 primitives.
+- **Gaps and workarounds**:
+  - **(a) `fallback_models` per agent — no V2 field.** V2 has no per-agent fallback chain in the config surface. Workaround: rely on the port's `runtime_fallback` (reactive, `session.error`) and/or the agent-level `model`; a proactive per-agent chain is not available.
+  - **(b) `compaction.model` per agent — no V2 field.** V2 compaction is configured globally under `compaction` (`auto`, `prune`, `tail_turns`, `preserve_recent_tokens`, `reserved`), not per agent. Workaround: leave compaction on the V2 global defaults; there is no per-agent compaction model.
+  - **(c) `reasoning` per agent — only via `#variant`.** V2 has no `reasoning` field on an agent; reasoning is selected through the model variant suffix, e.g. `"model": "provider/model#high"` in the `agents` block. Workaround: express the former `reasoning: xhigh|high|minimal|...` as a `#variant` on the agent's `model`.
+  - **(d) `~/.omo/omo.jsonc` is not read by the port (upstream gap G3).** V2 exposes no `config` hook, so the unified `omo.jsonc` file is not loaded at runtime; the port reads the V2 `opencode.json` instead. Workaround: keep the effective config in `~/.local/share/opencode-v2/config/opencode/opencode.json`; treat `omo.jsonc` as the V1-line source of truth only. See `docs/v2-api-mapping.md` (G3) and `docs/parity-matrix.md`.
+  - **(e) `categories` — no V2 field.** The `categories` block (used by delegate-task routing) has no V2 equivalent. Workaround: route explicitly with `subagent_type`/`model` on the delegation instead of relying on a named category.
+- **Status**: Accepted loss for this fork (documented, not a regression to fix). Revisit if a future `@opencode/plugin` release adds per-agent fallback, per-agent compaction, or a `config` hook. Related: `docs/v2-api-mapping.md` gaps G1-G17, `docs/parity-matrix.md`.
