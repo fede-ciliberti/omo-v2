@@ -104,7 +104,7 @@ const ulwExecuteOriginalHardRule = `- No production change before the tests cove
 - **NO DIRECT IMPLEMENTATION BY THE ORCHESTRATOR.** Root NEVER edits product files, writes tests, or runs QA itself — a spawned worker does.
 - No completion claim while an applicable ultraqa adversarial class was never probed. Each applicable class needs a captured observable result; each skipped class needs a one-line not-applicable reason in the ledger.
 - No implementation, review, or merge in the main checkout; every phase works in its task-owned worktree.
-- No unprefixed session ids in Boulder state. Sessions are always recorded as \`codex:<session_id>\`.
+- Session ids in Boulder state are recorded BARE or with the current harness prefix (\`opencode:\`, \`codex:\`, \`senpi:\`); never invent a prefix.
 - No stale-memory execution. The plan and ledger are the durable source of truth.`;
 
 const ulwExecuteCodexHardRule = `- No production change before the tests covering that behavior were read and a bug's reproduction captured; existing tests are green on the unchanged code first, and one that contradicts the intent is a FINDING, never edited green.

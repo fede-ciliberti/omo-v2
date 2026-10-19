@@ -236,6 +236,20 @@ describe("OMO Senpi scoped skill sync", () => {
     expect(content.includes("codex:<session_id>"), "ulw-execute must not reference codex:<session_id>").toBe(false)
   })
 
+  test("#given ulw-execute skill #when inspected #then the neutral prefix list is not corrupted into a duplicated senpi entry", () => {
+    const skillFile = join(skillsRoot, "ulw-execute", "SKILL.md")
+    const content = readFileSync(skillFile, "utf8")
+
+    expect(
+      content.includes("`senpi:`, `senpi:`"),
+      "ulw-execute must not carry the duplicated-prefix corruption artifact",
+    ).toBe(false)
+    expect(
+      content.includes("opencode:"),
+      "ulw-execute must not leak the opencode prefix into senpi output",
+    ).toBe(false)
+  })
+
   test("#given ulw-execute skill #when inspected #then the senpi banner advertises senpi watcher tools, not a codex wait idiom", () => {
     const skillFile = join(skillsRoot, "ulw-execute", "SKILL.md")
     const content = readFileSync(skillFile, "utf8")

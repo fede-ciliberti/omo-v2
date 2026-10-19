@@ -108,8 +108,27 @@ function applyTier1Adaptation(content) {
   return normalizeBlankLines(stripForbiddenGuidanceLines(stripNamedSections(rewriteEditionNaming(content))))
 }
 
+// The shared ulw-execute source is harness-neutral for session ids: it names the closed prefix set
+// (`opencode:` / `codex:` / `senpi:`) and shows a BARE session id. Senpi pins those three neutral
+// spots to `senpi:<session_id>` with anchored rewrites so no `codex` token survives and no blind
+// global rewrite can corrupt the neutral prefix list into a duplicated `senpi:` entry.
+const ulwExecuteSenpiSessionIdRewrites = [
+  [
+    "Record each session id BARE or with the CURRENT harness prefix (`opencode:`, `codex:`, or `senpi:`) so the continuation hook can identify its own session; the hook matches all three prefixes.",
+    "Record each session id with the `senpi:` harness prefix (`senpi:<session_id>`) so the continuation hook can identify its own session; the hook matches that prefix.",
+  ],
+  ['      "session_ids": ["<session_id>"],', '      "session_ids": ["senpi:<session_id>"],'],
+  [
+    "- Session ids in Boulder state are recorded BARE or with the current harness prefix (`opencode:`, `codex:`, `senpi:`); never invent a prefix.",
+    "- Session ids in Boulder state are recorded with the `senpi:` harness prefix (`senpi:<session_id>`); never invent a prefix.",
+  ],
+]
+
 function applyUlwExecuteOverlay(content) {
-  return content.replace(/codex:<session_id>/g, "senpi:<session_id>").replace(/\bcodex:/g, "senpi:")
+  return ulwExecuteSenpiSessionIdRewrites.reduce(
+    (adapted, [anchor, replacement]) => adapted.replace(anchor, replacement),
+    content,
+  )
 }
 
 function applySharedTierAdaptation(skillName, content) {

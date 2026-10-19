@@ -34,7 +34,7 @@ Plan and reviewer agents may run for a long time: spawn them in the background a
 
 # ulw-execute
 
-Execute a work plan until every top-level checkbox is complete. This skill pairs with the harness's ulw-execute continuation hook, which re-injects the next turn while `.omo/boulder.json` says this `codex:<session_id>` still has unchecked plan work.
+Execute a work plan until every top-level checkbox is complete. This skill pairs with the harness's ulw-execute continuation hook, which re-injects the next turn while `.omo/boulder.json` says this session still has unchecked plan work.
 
 ## Usage
 
@@ -77,7 +77,7 @@ When the user explicitly said `start work` / `$ulw-execute` and no selectable pl
 
 ## Phase 2: Create or update Boulder state
 
-Write `.omo/boulder.json` before implementation starts. Prefix session ids with `codex:` so the continuation hook can identify its own session.
+Write `.omo/boulder.json` before implementation starts. Record each session id BARE or with the CURRENT harness prefix (`opencode:`, `codex:`, or `senpi:`) so the continuation hook can identify its own session; the hook matches all three prefixes.
 
 ```json
 {
@@ -88,13 +88,15 @@ Write `.omo/boulder.json` before implementation starts. Prefix session ids with 
       "work_id": "<work-id>",
       "active_plan": ".omo/plans/<plan-name>.md",
       "plan_name": "<plan-name>",
-      "session_ids": ["codex:<session_id>"],
+      "session_ids": ["<session_id>"],
       "status": "active",
       "worktree_path": null
     }
   }
 }
 ```
+
+The `status` field is the closed set `active | completed | paused | abandoned`: never invent a status value. When a task is blocked on the user or on external input, park it by marking its plan checkbox `[~]` (it then counts toward the total but is neither completed nor actionable, so it never keeps a continuation alive), never by writing a made-up status such as `awaiting-user-ok`.
 
 Every phase (plan wave) runs in its own task-owned worktree with its own goal: before the wave's first dispatch, record the wave's goal — its checkboxes and their acceptance criteria — as a ledger entry, then `git worktree add <repo>-wt/<plan>-<wave> <branch off the integration base>` (or verify a `--worktree` path with `git worktree list --porcelain`), store the absolute path as `worktree_path`, run every edit, command, test, and evidence capture inside it; the wave lands on the integration base once its checkboxes are verified (direct merge, or the PR under `--make-pr`/`--ship`), and the next wave branches from that landed base.
 
@@ -239,5 +241,5 @@ When all top-level checkboxes in `## TODOs` and `## Final Verification Wave` are
 - **NO DIRECT IMPLEMENTATION BY THE ORCHESTRATOR.** Root NEVER edits product files, writes tests, or runs QA itself — a spawned worker does.
 - No completion claim while an applicable ultraqa adversarial class was never probed. Each applicable class needs a captured observable result; each skipped class needs a one-line not-applicable reason in the ledger.
 - No implementation, review, or merge in the main checkout; every phase works in its task-owned worktree.
-- No unprefixed session ids in Boulder state. Sessions are always recorded as `codex:<session_id>`.
+- Session ids in Boulder state are recorded BARE or with the current harness prefix (`opencode:`, `codex:`, `senpi:`); never invent a prefix.
 - No stale-memory execution. The plan and ledger are the durable source of truth.
