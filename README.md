@@ -25,7 +25,8 @@ fork's git history.
 | Agents (11 OMC agents incl. Prometheus + subagent dispatch) | Ported, runtime-verified |
 | Orchestration (background tasks, continuation, todos) | Ported, runtime-verified |
 | MCP injection + skills resolution + config migration | Ported, runtime-verified |
-| Builtin slash commands (goal, refactor, ulw-execute, start-work, stop-continuation, remove-ai-slops, handoff, hyperplan) | Restored as V2 Markdown commands (`.agents/command/` + `.opencode/command/`); one-shot — V2 has no boulder continuation hook |
+| Builtin slash commands (goal, refactor, ulw-execute, start-work, stop-continuation, remove-ai-slops, handoff, hyperplan) | Restored as V2 Markdown commands (`.agents/command/` + `.opencode/command/`) |
+| Boulder continuation (auto-resume open work plans) | New V2 module [`src/v2/boulder-continuation/`](./packages/omo-opencode/src/v2/boulder-continuation/AGENTS.md): triggers on `session.execution.succeeded`, injects a directive via `session.synthetic` (steer), loop guards; runtime-verified, **default off** |
 | TUI binding layer (sidebar, btw-side, native nudge) | Ported (real-terminal render = post-cutover observation item) |
 | Static gates (zero `@opencode-ai/*`, strict TS, pinned deps) | Green |
 | Runtime parity matrix | 19 PASS + 5 PASS* (documented limitations) — [docs/parity-matrix.md](./docs/parity-matrix.md) |
@@ -44,6 +45,7 @@ The port lives in `packages/omo-opencode/src/v2/`:
 | `client.ts` / `client-events.ts` | `OpenCode.make` / `Service.discover-ensure-stop` + V1→V2 event-name mapping |
 | `agents.ts` | 10 OMC agent definitions (`system` field, `mode`, permissions) + `omo.agents` RPC (list/get/dispatch) |
 | `orchestration.ts` | Background task manager (spawn/collect/cancel) + todo continuation + `omo.orch` RPC |
+| `boulder-continuation/` | Work-plan auto-continuation: `succeeded` → reconcile → lookup → checklist → guards → `session.synthetic`; counters in `ctx.storage`; `omo.continuation` RPC. See [its AGENTS.md](./packages/omo-opencode/src/v2/boulder-continuation/AGENTS.md) |
 | `mcp.ts` / `skills.ts` | MCP server injection (`ctx.mcp.transform`) + skills-location fallback + `omo.mcp` / `omo.skill` RPC |
 | `config-migration.ts` | Config/installer migration dry-run (V1 `tui.json` → V2 `cli.json` field mapping) |
 | `tui/` | TUI binding layer: `btw.ts`, `sidebar.ts` (slot `sidebar.content`), `session.ts`, `render.ts`, `native-nudge.ts` |
@@ -70,6 +72,20 @@ Load the plugin into an OpenCode V2 host (config `plugins` array, absolute direc
 
 The host resolves the server entry from `exports["."]/import` (`dist/index.js`) and the TUI entry
 from `exports["./tui"]` (`dist/tui-entry.js`).
+
+**Boulder continuation is off by default.** To auto-resume work plans on turn end, use the
+encoded plugin form and enable it:
+
+```json
+{
+  "plugins": [
+    { "package": "C:/absolute/path/to/this/repo", "options": { "boulder_continuation": { "enabled": true } } }
+  ]
+}
+```
+
+Restart the host after changing it. Observe it with `POST /api/rpc/omo.continuation/status`
+(body `{"input":{}}`), which reports `enabled` plus the per-work counters and the last decision.
 
 Companion stack used with this port (not vendored here):
 
