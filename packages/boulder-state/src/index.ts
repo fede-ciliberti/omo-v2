@@ -5,6 +5,7 @@ export {
   addBoulderWork,
   appendSessionId,
   appendSessionIdForWork,
+  buildWorkFromMirror,
   clearBoulderState,
   completeBoulder,
   createBoulderState,
@@ -25,6 +26,7 @@ export {
   isWorkStale,
   normalizeSessionId,
   readBoulderState,
+  readBoulderStateDetailed,
   reconcileStaleWorks,
   resolveBoulderPlanPath,
   resolveBoulderPlanPathForWork,
@@ -51,3 +53,4 @@ export type {
   TaskSessionState,
   TopLevelTaskRef,
 } from "./types"
+export type { BoulderStateReadResult } from "./storage"

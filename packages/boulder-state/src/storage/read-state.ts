@@ -1,93 +1,14 @@
-import { existsSync, readFileSync } from "node:fs"
-
 import type { BoulderState, BoulderWorkResumeOption, BoulderWorkState, TaskSessionState } from "../types"
-import { getBoulderFilePath, resolveBoulderPlanPathForWork } from "./path"
+import { resolveBoulderPlanPathForWork } from "./path"
 import { getPlanProgress } from "./plan-progress"
-import { buildWorkFromMirror, isValidWorkStatus, normalizeSessionId, parseIsoToMs, projectWorkToMirror, selectMirrorWork } from "./shared"
+import { readBoulderStateQuiet } from "./read-state-detailed"
+import { buildWorkFromMirror, isValidWorkStatus, normalizeSessionId, parseIsoToMs } from "./shared"
+
+export type { BoulderStateReadResult } from "./read-state-detailed"
+export { readBoulderStateDetailed } from "./read-state-detailed"
 
 export function readBoulderState(directory: string): BoulderState | null {
-  const filePath = getBoulderFilePath(directory)
-  if (!existsSync(filePath)) {
-    return null
-  }
-
-  try {
-    const content = readFileSync(filePath, "utf-8")
-    const parsed = JSON.parse(content)
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || Object.keys(parsed).length === 0) {
-      return null
-    }
-
-    normalizeState(parsed)
-    const state = parsed as BoulderState
-    const mirrorWork = selectMirrorWork(state)
-    if (mirrorWork) {
-      state.active_work_id = mirrorWork.work_id
-      projectWorkToMirror(state, mirrorWork)
-    }
-
-    return state
-  } catch {
-    return null
-  }
-}
-
-function normalizeState(state: Record<string, unknown>): void {
-  normalizeSessionFields(state)
-
-  const sessionIds = Array.isArray(state.session_ids) ? state.session_ids : []
-
-  const sessionOrigins = state.session_origins && typeof state.session_origins === "object" && !Array.isArray(state.session_origins)
-    ? (state.session_origins as Record<string, unknown>)
-    : {}
-  state.session_origins = sessionOrigins
-
-  if (sessionIds.length === 1) {
-    const soleSessionId = sessionIds[0]
-    if (
-      typeof soleSessionId === "string"
-      && sessionOrigins[soleSessionId] !== "appended"
-      && sessionOrigins[soleSessionId] !== "direct"
-    ) {
-      sessionOrigins[soleSessionId] = "direct"
-    }
-  }
-
-  if (!state.task_sessions || typeof state.task_sessions !== "object" || Array.isArray(state.task_sessions)) {
-    state.task_sessions = {}
-  }
-
-  normalizeWorkSessionFields(state.works)
-}
-
-function normalizeSessionFields(target: Record<string, unknown>): void {
-  const sessionIds = Array.isArray(target.session_ids)
-    ? target.session_ids.filter((sessionId): sessionId is string => typeof sessionId === "string").map((sessionId) => normalizeSessionId(sessionId))
-    : []
-  target.session_ids = sessionIds
-
-  const sessionOrigins = target.session_origins && typeof target.session_origins === "object" && !Array.isArray(target.session_origins)
-    ? normalizeSessionOrigins(target.session_origins as Record<string, unknown>)
-    : {}
-  target.session_origins = sessionOrigins
-}
-
-function normalizeSessionOrigins(sessionOrigins: Record<string, unknown>): Record<string, unknown> {
-  return Object.fromEntries(
-    Object.entries(sessionOrigins).map(([sessionId, origin]) => [normalizeSessionId(sessionId), origin]),
-  )
-}
-
-function normalizeWorkSessionFields(works: unknown): void {
-  if (!works || typeof works !== "object" || Array.isArray(works)) {
-    return
-  }
-
-  for (const work of Object.values(works)) {
-    if (work && typeof work === "object" && !Array.isArray(work)) {
-      normalizeSessionFields(work as Record<string, unknown>)
-    }
-  }
+  return readBoulderStateQuiet(directory)
 }
 
 export function getBoulderWorks(state: BoulderState): BoulderWorkState[] {

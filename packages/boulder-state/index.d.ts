@@ -111,6 +111,11 @@ export interface StaleWorkReconcileResult {
   readonly written: boolean
 }
 
+export type BoulderStateReadResult =
+  | { status: "ok"; state: BoulderState }
+  | { status: "absent" }
+  | { status: "corrupt"; error: Error }
+
 export interface BoulderWorkInput {
   planPath: string
   sessionId: string
@@ -180,6 +185,9 @@ export declare function getWorkForSession(directory: string, sessionId: string):
 export declare function getWorkResumeOptions(directory: string): BoulderWorkResumeOption[]
 export declare function normalizeSessionId(sessionId: string, platform?: "codex" | "opencode" | "senpi"): string
 export declare function readBoulderState(directory: string): BoulderState | null
+export declare function readBoulderStateDetailed(directory: string): BoulderStateReadResult
+export declare function buildWorkFromMirror(state: BoulderState): BoulderWorkState
+export declare function writeFileAtomicSync(filePath: string, data: string): void
 export declare const DEFAULT_STALE_WORK_THRESHOLD_MS: number
 export declare const STALE_WORK_THRESHOLD_ENV_KEY: "OMO_BOULDER_STALE_WORK_THRESHOLD_MS"
 export declare function isWorkStale(input: {

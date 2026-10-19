@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 
 import type { BoulderState, BoulderWorkState } from "../types"
+import { writeFileAtomicSync } from "./atomic-write"
 import { getBoulderFilePath } from "./path"
 import { getPlanName } from "./plan-progress"
 import { getBoulderWorks, readBoulderState } from "./read-state"
@@ -42,7 +43,7 @@ export function writeBoulderState(directory: string, state: BoulderState): boole
       }
     }
 
-    writeFileSync(filePath, JSON.stringify(stateToWrite, null, 2), "utf-8")
+    writeFileAtomicSync(filePath, JSON.stringify(stateToWrite, null, 2))
     return true
   } catch {
     return false

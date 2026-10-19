@@ -1,6 +1,7 @@
 export { getBoulderFilePath, resolveBoulderPlanPath, resolveBoulderPlanPathForWork } from "./path"
 export { findPrometheusPlans, getPlanName, getPlanProgress } from "./plan-progress"
-export { normalizeSessionId } from "./shared"
+export { buildWorkFromMirror, normalizeSessionId } from "./shared"
+export { writeFileAtomicSync } from "./atomic-write"
 export {
   getActiveWorks,
   getBoulderWorks,
@@ -10,7 +11,9 @@ export {
   getWorkForSession,
   getWorkResumeOptions,
   readBoulderState,
+  readBoulderStateDetailed,
 } from "./read-state"
+export type { BoulderStateReadResult } from "./read-state-detailed"
 export { appendSessionId, appendSessionIdForWork } from "./session"
 export {
   DEFAULT_STALE_WORK_THRESHOLD_MS,
