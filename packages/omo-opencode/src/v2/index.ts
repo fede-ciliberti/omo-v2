@@ -1,6 +1,7 @@
 import { Plugin } from "@opencode/plugin"
 import { z } from "zod"
 import { registerAgents } from "./agents"
+import { registerBoulderContinuation } from "./boulder-continuation/register"
 import { registerMcp } from "./mcp"
 import { registerOrchestration } from "./orchestration"
 import { registerSkills } from "./skills"
@@ -65,6 +66,12 @@ export const omoV2Plugin = Plugin.define({
       cleanups.push(await registerSkills(ctx))
     } catch (error) {
       console.error("[OMC] v2 registerSkills failed:", error)
+    }
+
+    try {
+      cleanups.push(await registerBoulderContinuation(ctx))
+    } catch (error) {
+      console.error("[OMC] v2 registerBoulderContinuation failed:", error)
     }
 
     return async () => {
