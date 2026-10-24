@@ -1,19 +1,23 @@
 # V2 Isolation Harness — proof & operating manual
 
-> Interim doc (Wave 0, task 3). Will be moved into the private fork `fazulfi/omo-v2` docs at task 4/22.
-> Evidence dir: `C:\Users\faizz\new-saas\.omo\evidence\opencode-v2-migration\task-3\`
+> **Inherited document.** Written in the source fork (`fazulfi/omo-v2`) for its Wave 0 / task 3 on
+> native Windows, and kept here as the origin record of the V2 isolation contract. The Windows
+> paths below are that author's harness and do not exist in this checkout. For the harness this
+> fork actually uses, see `script/agent/qa-sandbox.sh` and the `opencode-qa` skill. Original
+> evidence dir (not present here): `<port-workspace>\.omo\evidence\opencode-v2-migration\task-3\`.
 
 ## 1. Purpose
 
-All V2 (opencode 2.0.20) testing MUST run in an isolated harness so that the owner's V1
-production install (binary 1.18.33, user config, cache, sessions, db) is never touched.
-This document records the exact env vars/flags used, how their names were verified, and
-the runtime proof that isolation holds on native Windows.
+All V2 testing MUST run in an isolated harness so that the developer's V1 production install
+(binary 1.18.33 at the time, user config, cache, sessions, db) is never touched. This document
+records the exact env vars/flags used, how their names were verified, and the runtime proof that
+isolation held on native Windows. The run below used opencode 2.0.20; this fork pins 2.0.22, and
+the env-var contract is unchanged between those versions.
 
 ## 2. Harness layout
 
 ```
-C:\Users\faizz\ports\omo-v2\v2-home\
+<port-workspace>\v2-home\
 ├── npm-prefix\          # isolated npm install of @opencode/cli@2.0.20 (exact)
 │   └── node_modules\@opencode\cli\bin\opencode.exe   (v2.0.20)
 ├── harness-root\       # ALL V2 state roots (redirected via env)
@@ -48,7 +52,7 @@ Notes:
 ## 4. Canonical harness invocation
 
 ```bash
-HARNESS="C:/Users/faizz/ports/omo-v2/v2-home/harness-root"
+HARNESS="<port-workspace>/v2-home/harness-root"
 export OPENCODE_TEST_HOME="$HARNESS"
 export OPENCODE_CONFIG_DIR="$HARNESS/config"
 export OPENCODE_DISABLE_AUTOUPDATE=1
@@ -59,8 +63,8 @@ export XDG_DATA_HOME="$HARNESS/data"
 export XDG_CACHE_HOME="$HARNESS/cache"
 export XDG_STATE_HOME="$HARNESS/state"
 
-OC="C:/Users/faizz/ports/omo-v2/v2-home/npm-prefix/node_modules/@opencode/cli/bin/opencode.exe"
-cd "C:/Users/faizz/ports/omo-v2/v2-home/test-project"
+OC="<port-workspace>/v2-home/npm-prefix/node_modules/@opencode/cli/bin/opencode.exe"
+cd "<port-workspace>/v2-home/test-project"
 "$OC" models   # or any subcommand
 ```
 
@@ -89,7 +93,7 @@ Real V1 roots NOT touched by the V2 run:
 | `~/.bun/bin/opencode.exe` | Sep 28 13:05 (unchanged) | untouched |
 | `~/.cache/opencode/models.json` | 23:31:51 — BEFORE run window (23:37:40–23:40:53) | untouched by V2 |
 | `~/.config/opencode/service.json` | 17:00:35 | V1-owner usage, hours before run |
-| `~/.local/share/opencode/opencode.db` | 23:40:59 | live V1 session of the owner (out-of-scope drift per plan) |
+| `~/.local/share/opencode/opencode.db` | 23:40:59 | the developer's live V1 session (out-of-scope drift per plan) |
 
 The harness service process terminated after the run (tasklist shows no
 `opencode-service-24264` process) — no lingering V2 daemons.
@@ -97,5 +101,5 @@ The harness service process terminated after the run (tasklist shows no
 ## 6. Fallback posture
 
 Not needed: native Windows isolation is proven above. The plan's fallbacks
-(separate Windows user profile, VPS staging `172.236.144.22`) remain documented
-but unused. Production VPS (`82.25.62.204`) is never used by this plan.
+(separate Windows user profile, a staging VPS) remain documented
+but unused. The production VPS is never used by this plan.
