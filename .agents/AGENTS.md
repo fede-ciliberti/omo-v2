@@ -4,7 +4,7 @@
 
 ## OVERVIEW
 
-Project-scope skills + slash commands under the new `.agents/` directory name. During the `oh-my-opencode` → `oh-my-openagent` rename transition, this directory is the **target** of the migration from `.opencode/`. It is a strict SUPERSET of `.opencode/` (4 -> 13 skills; 5 commands).
+Project-scope skills + slash commands under the new `.agents/` directory name. During the `oh-my-opencode` → `oh-my-openagent` rename transition, this directory is the **target** of the migration from `.opencode/`. It is a strict SUPERSET of `.opencode/` (4 -> 13 skills; 13 commands, and the only command tree since 2026-10-24).
 
 Loaded alongside `.opencode/` by [`packages/omo-opencode/src/features/opencode-skill-loader/`](../packages/omo-opencode/src/features/opencode-skill-loader/). When both directories declare the same skill or command name, the higher-priority scope wins per the loader's deduplication rules.
 
@@ -26,16 +26,27 @@ Loaded alongside `.opencode/` by [`packages/omo-opencode/src/features/opencode-s
 | `senpi-qa/` | no | Live Senpi adapter + task-engine QA against the real `senpi` binary in an isolated `SENPI_CODING_AGENT_DIR`; `scripts/resolve-evidence-dir.mjs` pins every artifact to the gitignored `.omo/evidence/omo-senpi-adapter/<slug>/` (local only; the PR body carries the summary) |
 | `tech-debt-audit/` | no | Technical-debt audit across 9 dimensions via AST-grep/grep; emits `TECH_DEBT_AUDIT.md` |
 
-The 5 "NEW" skills here are skill-format equivalents of slash commands that exist in BOTH `.opencode/command/` and `.agents/command/`. They allow the same instructions to be triggered either by an explicit `/command` invocation OR by skill auto-loading on matching prompts. The `codex-qa`, `opencode-qa`, `senpi-qa`, and `tech-debt-audit` skills are `.agents/`-only with no `.opencode/` counterpart and are not command-forms.
+The 5 "NEW" skills here are skill-format equivalents of slash commands that live in `.agents/command/`. They allow the same instructions to be triggered either by an explicit `/command` invocation OR by skill auto-loading on matching prompts. The `codex-qa`, `opencode-qa`, `senpi-qa`, and `tech-debt-audit` skills are `.agents/`-only with no `.opencode/` counterpart and are not command-forms.
 
-## COMMANDS (5 slash commands)
+## COMMANDS (13 slash commands)
 
-Identical set to `.opencode/command/`:
+Single source: `.agents/command/`. The `.opencode/command/` duplicate tree was removed on
+2026-10-24 because the two copies had drifted (`remove-deadcode.md` used `category="deep"` in
+one and `"deep-low"` in the other).
+
 - `/get-unpublished-changes`
+- `/goal`
+- `/handoff`
+- `/hyperplan`
 - `/omomomo`
 - `/publish`
+- `/refactor`
+- `/remove-ai-slops`
 - `/remove-deadcode`
 - `/security-research`
+- `/start-work`
+- `/stop-continuation`
+- `/ulw-execute`
 
 ## OTHER CONTENTS
 

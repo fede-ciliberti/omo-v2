@@ -50,7 +50,7 @@ After Step 3 (trigger), you MUST drive the run to a terminal conclusion AND comp
 
 Only after all five are green may you end the turn. If the run fails, run `gh run view <id> --log-failed`, report it, and STOP (do not repair the tree mid-publish). If a post-trigger step fails for an external reason (npm propagation, Discord auth), report it clearly and continue the remaining steps — do not let one failure abort the rest.
 
-This contract applies to the slash-command copies (`.agents/command/publish.md`, `.opencode/command/publish.md`) too; they are kept byte-identical to this skill per the `.agents/AGENTS.md` drift rule.
+This contract applies to the slash-command copy (`.agents/command/publish.md`) too; it is kept byte-identical to this skill per the `.agents/AGENTS.md` drift rule.
 
 ## CRITICAL: ARGUMENT REQUIREMENT
 

@@ -8,13 +8,11 @@ const releaseAnalysisFiles = [
   ".agents/skills/pre-publish-review/SKILL.md",
   ".opencode/skills/pre-publish-review/SKILL.md",
   ".agents/command/get-unpublished-changes.md",
-  ".opencode/command/get-unpublished-changes.md",
 ] as const
 
 const publishRunbookFiles = [
   ".agents/skills/publish/SKILL.md",
   ".agents/command/publish.md",
-  ".opencode/command/publish.md",
 ] as const
 
 function readProjectFile(path: string): string {

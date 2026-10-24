@@ -5,7 +5,7 @@ import { join, relative, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url))
-const commandRoots = [".opencode/command", ".agents/command"] as const
+const commandRoots = [".agents/command"] as const
 const skillRoots = [".opencode/skills", ".agents/skills"] as const
 const codexMaterializedRuntimePayloadPaths = [
   "dist/cli/index.js",
@@ -257,10 +257,8 @@ describe("published package layout", () => {
   test("#given dot-directory command and skill assets #when packing package #then slash-command discovery assets ship", async () => {
     // given
     const expectedAssetPaths = collectExpectedAssetPaths()
-    expect(expectedAssetPaths).toContain(".opencode/command/security-research.md")
     expect(expectedAssetPaths).toContain(".agents/command/security-research.md")
     expect(expectedAssetPaths).toContain(".agents/skills/security-research/SKILL.md")
-    expect(expectedAssetPaths).not.toContain(".opencode/command/security-review.md")
     expect(expectedAssetPaths).not.toContain(".agents/command/security-review.md")
 
     // when

@@ -8,19 +8,17 @@ import { fileURLToPath } from "node:url"
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url))
 const fakeArtifactName = "__internal-fake-do-not-ship-test-artifact"
-const packageAssetRoots = [".opencode/command", ".opencode/skills", ".agents/command", ".agents/skills"] as const
+const packageAssetRoots = [".opencode/skills", ".agents/command", ".agents/skills"] as const
 const fakeInternalSkillArtifactPaths = [
   `.opencode/skills/${fakeArtifactName}/SKILL.md`,
   `.agents/skills/${fakeArtifactName}/SKILL.md`,
 ] as const
 const fakeInternalCommandArtifactPaths = [
-  `.opencode/command/${fakeArtifactName}.md`,
   `.agents/command/${fakeArtifactName}.md`,
 ] as const
 const shippedControlArtifactPaths = [
   ".opencode/skills/shipped-control/SKILL.md",
   ".agents/skills/shipped-control/SKILL.md",
-  ".opencode/command/shipped-control.md",
   ".agents/command/shipped-control.md",
 ] as const
 const packageLayoutTestTimeoutMs = 60_000
