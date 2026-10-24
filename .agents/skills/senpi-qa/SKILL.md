@@ -1,6 +1,6 @@
 ---
 name: senpi-qa
-description: "QA the omo Senpi adapter (packages/omo-senpi, packages/senpi-task) against the REAL senpi binary in strict isolation, and write every artifact to the one canonical evidence path .omo/evidence/omo-senpi-adapter/<slug>/. The live drivers under packages/omo-senpi/scripts/qa/ create their own isolated SENPI_CODING_AGENT_DIR and ignore the caller's, so the real ~/.senpi/agent is never written. Ships scripts/resolve-evidence-dir.mjs, which is the ONLY sanctioned way to pick an evidence directory: it rejects traversal, separators, absolute paths, and stray roots such as local-ignore/qa-evidence. Use whenever someone changes anything under packages/omo-senpi or packages/senpi-task, or wants to QA, smoke-test, verify, or debug the Senpi adapter, the task/team engine, the DAG, task RPC, or skill delivery. Triggers: senpi qa, qa senpi, senpi-qa, test senpi adapter, verify senpi task, senpi task e2e, senpi team e2e, task dag qa, live senpi driver, senpi evidence path."
+description: "QA the omo Senpi adapter (packages/omo-senpi, packages/senpi-task) against the REAL senpi binary in strict isolation, and write every artifact to the one canonical evidence path .omo/evidence/omo-senpi-adapter/SLUG/. The live drivers under packages/omo-senpi/scripts/qa/ create their own isolated SENPI_CODING_AGENT_DIR and ignore the caller's, so the real ~/.senpi/agent is never written. Ships scripts/resolve-evidence-dir.mjs, which is the ONLY sanctioned way to pick an evidence directory: it rejects traversal, separators, absolute paths, and stray roots such as local-ignore/qa-evidence. Use whenever someone changes anything under packages/omo-senpi or packages/senpi-task, or wants to QA, smoke-test, verify, or debug the Senpi adapter, the task/team engine, the DAG, task RPC, or skill delivery. Triggers: senpi qa, qa senpi, senpi-qa, test senpi adapter, verify senpi task, senpi task e2e, senpi team e2e, task dag qa, live senpi driver, senpi evidence path."
 ---
 
 # Senpi QA
@@ -13,7 +13,7 @@ count as live QA here: `bun run test:senpi` is the package gate, the drivers in
 ## Golden rules
 
 - **Evidence lives at exactly one path.** Every artifact goes under
-  `.omo/evidence/omo-senpi-adapter/<slug>/`. Pick it with
+  `.omo/evidence/omo-senpi-adapter/SLUG/`. Pick it with
   `scripts/resolve-evidence-dir.mjs` and nothing else — a hand-typed path is how
   runs end up somewhere like `local-ignore/qa-evidence/` or a `.qa-evidence/` at
   the worktree root, which is outside the ignored root and gets committed by

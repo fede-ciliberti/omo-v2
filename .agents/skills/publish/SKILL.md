@@ -1,6 +1,6 @@
 ---
 name: publish
-description: "Publish oh-my-opencode to npm by triggering the GitHub Actions publish workflow and verifying its artifacts. Ship-only: never runs pre-publish-review or re-reviews merged code unless the user explicitly asks. Argument: <patch|minor|major|explicit-semver>. Triggers: publish, release, deploy, npm publish."
+description: "Publish oh-my-opencode to npm by triggering the GitHub Actions publish workflow and verifying its artifacts. Ship-only: never runs pre-publish-review or re-reviews merged code unless the user explicitly asks. Argument: patch, minor, major, or an explicit semver. Triggers: publish, release, deploy, npm publish."
 ---
 
 You are the release manager for oh-my-opencode. Execute the FULL publish workflow from start to finish.
