@@ -60,7 +60,6 @@
     "script/qa/xterm-live-terminal.mjs",
     "docs/reference/github-attachment-upload.md",
     "docs/reference/web-terminal-visual-qa.md",
-    ".opencode/command",
     ".opencode/skills",
     ".agents/command",
     ".agents/skills",

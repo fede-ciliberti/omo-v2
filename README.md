@@ -25,7 +25,7 @@ fork's git history.
 | Agents (11 OMC agents incl. Prometheus + subagent dispatch) | Ported, runtime-verified |
 | Orchestration (background tasks, continuation, todos) | Ported, runtime-verified |
 | MCP injection + skills resolution + config migration | Ported, runtime-verified |
-| Builtin slash commands (goal, refactor, ulw-execute, start-work, stop-continuation, remove-ai-slops, handoff, hyperplan) | Restored as V2 Markdown commands (`.agents/command/` + `.opencode/command/`) |
+| Builtin slash commands (goal, refactor, ulw-execute, start-work, stop-continuation, remove-ai-slops, handoff, hyperplan) | Restored as V2 Markdown commands (`.agents/command/`) |
 | Boulder continuation (auto-resume open work plans) | New V2 module [`src/v2/boulder-continuation/`](./packages/omo-opencode/src/v2/boulder-continuation/AGENTS.md): triggers on `session.execution.succeeded`, injects a directive via `session.synthetic` (steer), loop guards; runtime-verified, **default off** |
 | TUI binding layer (sidebar, btw-side, native nudge) | Ported (real-terminal render = post-cutover observation item) |
 | Static gates (zero `@opencode-ai/*`, strict TS, pinned deps) | Green |
