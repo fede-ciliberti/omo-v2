@@ -1,6 +1,7 @@
 ---
 name: ast-grep
 description: "Searches and rewrites code by AST shape across 25 languages. Use when the target is a syntax pattern (every call/class/import shaped like X, a codemod, a YAML rule) rather than literal text; for plain strings, comments, or filenames, use rg."
+use_when: "the question depends on code SHAPE (function/class/call/import declarations, missing await, empty catch, codemods) rather than literal text; load this before reaching for grep/rg on a symbol or structure."
 ---
 
 # ast-grep
