@@ -54,7 +54,7 @@ function messageText(message: SessionMessageInfo): string {
       if (message.status === "failed") {
         return ""
       }
-      return `${message.summary} ${message.recent}`
+      return message.summary
     default:
       return ""
   }

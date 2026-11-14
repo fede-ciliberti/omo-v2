@@ -50,7 +50,6 @@ function completedCompaction(): SessionMessageInfo {
     status: "completed",
     reason: "auto",
     summary: "summary",
-    recent: "recent",
   }
 }
 
@@ -127,7 +126,6 @@ describe("transcriptHasContextPressureMarker", () => {
       status: "running",
       reason: "auto",
       summary: "in progress",
-      recent: "in progress",
     }
     expect(transcriptHasContextPressureMarker([running])).toBe(false)
   })

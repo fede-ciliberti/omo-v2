@@ -49,7 +49,6 @@ export function compactionMessage(created: number): SessionMessageInfo {
     status: "completed",
     reason: "auto",
     summary: "context compacted",
-    recent: "recent turns",
   }
 }
 
