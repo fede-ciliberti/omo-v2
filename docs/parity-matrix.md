@@ -14,6 +14,9 @@
 - **PASS** — dibuktikan runtime di harness (perintah + output tersimpan).
 - **PASS\*** — runtime terbukti pada jalur yang tersedia; bagian model-backed dibatasi harness
   (API key dimask) dan dicatat jujur sebagai limitasi, bukan dikecualikan.
+- **PARTIAL** — one half is proven on its stated surface, the other half is explicitly deferred
+  and the deferral is named in the Evidence column. Never a synonym for PASS.
+- **DEFERRED** — not ported at all; the Evidence column names the follow-up plan (planned).
 - Metode RPC: `opencode api --server <url> rpc.call --param rpcID=<id> --param method=<m> -d '{"input":{…}}'`
 
 ## Matrix
@@ -50,6 +53,22 @@ Inventory coverage: seluruh fitur owner-used dari task-5 inventory (plugin load,
 client/session/event, agents/subagents, background/continuation/todos, MCP-inject,
 config/installer, TUI, DCP, tokenscope) terwakili baris 1–25. Entri CLI `omo` = thin wrapper
 omo-native TANPA `@opencode-ai` → di luar port scope (task-5 verdict), bukan bagian matrix.
+
+> Scope note on the verdict: rows 1-25 measure plugin wiring and owner-used feature surfaces.
+> None of them measures prompt fidelity, so the PASS count below says nothing about
+> agent-doctrine completeness. Rows 26-31 carry that axis separately and are NOT part of the
+> 24/24 count.
+
+## Agent doctrine and prompt fidelity (rows 26-31)
+
+| # | Fitur (owner-used) | Skenario runtime | Hasil | Evidence |
+|---|---|---|---|---|
+| 26 | Agent doctrine: canonical Sisyphus (prompt fidelity) | `agents/sisyphus-doctrine.ts` exports `SISYPHUS_DOCTRINE_BASE` (8143 chars) plus `DOCTRINE_SECTION_IDS` (8 ids, in order: intent-gate, delegation-bias, fan-out, result-protocol, continuation, delegation-prompt, oracle, execution-evidence); acceptance guard asserts every id is present in the body and zero `call_omo_agent`/`load_skills`/`subagent_type`/`background_task` | **PARTIAL** (module and guard proven on the static surface; live delivery into the system prompt is row 27 and the behavioural proof is plan todo 12) | task-2-v2-sisyphus-orchestration-port.txt; packages/omo-opencode/src/v2/agents/sisyphus-doctrine.ts |
+| 27 | Agent doctrine delivery and model-family overlays (prompt fidelity) | `ctx.session.hook("context")` appends a `SystemPart` to `input.system` and sets `input.options`; the captured primary request body carries the probe marker and `"temperature":0.31`; `agents/family-overlays.ts` composes base + per-family overlay with allowlisted `FAMILY_OPTIONS` keys | **PASS\*** (the seam is proven on the wire at opencode v2.3.0 and the doctrine is captured in the live sisyphus request body; the overlay composition half is unit-tested only because this machine has no opus-5 provider, so the model-backed overlay half stays behind the harness limit, see Limitasi) | task-1-seam-verdict.md (`SEAM-CONFIRMED`); task-1-v2-sisyphus-orchestration-port.jsonl |
+| 28 | Dead-primitive repair in agent prompt bodies | the repair is in `packages/omo-opencode/src/v2/agents.ts`: prompt bodies name `subagent(...)` and no longer name `call_omo_agent`/`load_skills`/`subagent_type`/`run_in_background`/`look_at`, nor `background_output`/`background_task`; gate is `grep -nE` on that file (0 lines, while the same greps on `git show HEAD:` return 15 + 1) plus the `omo.agents get metis` / `get sisyphus-junior` RPC assertions | **PASS** (repair landed and proven on both the source and the RPC payload) | task-4-v2-sisyphus-orchestration-port.txt; task-11-v2-sisyphus-orchestration-port.json |
+| 29 | Sub-session continuation (`subagent` plus `sessionID`) | doctrine section `continuation` prescribes continuing a child with its returned `sessionID` instead of restarting it; a live session then sent a follow-up call carrying an existing `sessionID` whose result was that same child, with the distinct-child count unchanged | **PASS** (contract plus live transcript; the model only reached for it once the prompt named the parameter, recorded in the evidence notes) | task-12-v2-sisyphus-orchestration-port.jsonl; task-12-notes.md |
+| 30 | Doctrine-supporting hooks (V1 parity gap) | four V1 hooks have no V2 counterpart: todo-continuation enforcer, compaction context and todo preservation, delegate-task-retry, empty-task-response detector | **DEFERRED** (no V2 port; follow-up plan `v2-doctrine-support-hooks`) | follow-up plan `v2-doctrine-support-hooks` (planned) |
+| 31 | Hephaestus and Atlas doctrine (prompt fidelity) | hephaestus and atlas remain reduced identity ports in `packages/omo-opencode/src/v2/agents.ts`; only their dead prompt references were repaired, no doctrine was ported | **DEFERRED** (follow-up plan `v2-hephaestus-atlas-doctrine`) | follow-up plan `v2-hephaestus-atlas-doctrine` (planned) |
 
 ## Limitasi terdokumentasi (bukan pengecualian diam-diam)
 
