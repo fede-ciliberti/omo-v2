@@ -40,7 +40,7 @@
 | 18 | Skills load | `omo.skill list` → listing (builtin opencode skill + lokasi fallback OMC) | **PASS** | task-19/06-skill-list.log; task-14/skill-list.log |
 | 19 | Config normalization (V1 config as-is) | `debug config` exit 0; sha256 before==after (in-memory, no rewrite); mapping model/plugin/provider/enabled_providers/mcp → V2 shape | **PASS** | task-3/{debug-config-stdout.log,config-hash-*}; docs/v2-config-normalization.md |
 | 20 | Config/installer migration dry-run | Field-rename mapping + tui.json→cli.json preview tanpa menyentuh production | **PASS** | task-14/{config-dryrun-console,config-preview,config-report}.log |
-| 21 | TUI (registerTui binding) | smoke mock-Context: 2 slot claim, 2 keymap layer, cleanup bersih; plugin TUI entrypoint termuat (`omo-tui-test` via `plugin list`) | **PASS\*** (render di terminal nyata butuh TTY — lihat Limitasi) | task-15/{smoke-register-tui,plugin-list-warm}.log |
+| 21 | TUI (registerTui binding) | smoke mock-Context: 2 slot claim, 2 keymap layer, cleanup bersih; plugin TUI entrypoint termuat (`omo-tui-test` via `plugin list`); sidebar.content rendered on a real terminal (tmux, OpenCode 2.3.0) showing the Models section | **PASS\*** (interactive states still pending — see Limitasi) | task-15/{smoke-register-tui,plugin-list-warm}.log |
 | 22 | DCP 3.2.0 | Load 'DCP V2 initialized'; `rpc.call rpcID=dcp method=status` → `{"enabled":true}`; tool compress terdaftar di registry gabungan | **PASS\*** (eksekusi compress butuh sesi model — lihat Limitasi) | task-19/{07-dcp-status,02-tools-list}.log; task-7 |
 | 23 | Tokenscope (PR #50) | Load di V2 (v2.0.0 build); tool tokenscope terdaftar di registry gabungan; e2e PR 2/2 pass (tool register + execute) | **PASS\*** (metrik token real butuh sesi model — lihat Limitasi) | task-19/02-tools-list.log; task-8 (e2e); task-16 |
 | 24 | Companion integration (3 plugin bersamaan) | Smoke gabungan di atas: status + agents + tools + dcp status + MCP connected dalam SATU service | **PASS** | task-16/task-16 JSON + task-19 semua log |
@@ -68,8 +68,10 @@ menandai bagian yang membutuhkan model live:
    RPC status + e2e tokenscope (tool execute via PR test harness) terbukti; eksekusi dalam
    sesi model live = pasca-cutover.
 5. **TUI render terminal nyata** (baris 21) — binding + slot claim + keymap terbukti via
-   mock-Context smoke + plugin load; render interaktif butuh TTY (headless harness tidak
-   punya). Buktikan ulang di F3 (sesi V2 nyata).
+   mock-Context smoke + plugin load. The `sidebar.content` claim is now ALSO rendered on a
+   real TTY (tmux, OpenCode 2.3.0): the idle `Models` section paints after the theme token
+   adapter landed. Active agents / jobs / ULW loop states remain pending because the V2
+   snapshot producer is not ported yet; prove them when that lands.
 
 Klasifikasi ini konsisten dengan plan task-19 ("model-dependent → catatan batasan jujur")
 dan TIDAK mengecualikan fitur apa pun tanpa dokumentasi.
