@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs"
+import { dirname, join, resolve } from "node:path"
 import type { Plugin } from "@opencode/plugin"
 import { z } from "zod"
 
@@ -148,23 +150,104 @@ export function createWebsearchConfig(
   }
 }
 
+// ---------------------------------------------------------------------------
+// LSP daemon resolution
+// ---------------------------------------------------------------------------
+
+type ResolvedDaemon = {
+  readonly cli: string
+  readonly version: string
+}
+
+const DAEMON_PACKAGE_NAME = "@code-yeongyu/lsp-daemon"
+const DAEMON_CLI_RELATIVE = join("dist", "cli.js")
+const DAEMON_PACKAGE_MANIFEST = "package.json"
+
+function readPackageVersion(manifestPath: string): string | null {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(manifestPath, "utf8"))
+    if (typeof parsed !== "object" || parsed === null) return null
+    const version = (parsed as Record<string, unknown>).version
+    if (typeof version !== "string" || version.length === 0) return null
+    return version
+  } catch {
+    return null
+  }
+}
+
+function resolveAt(daemonDir: string): ResolvedDaemon | null {
+  const cli = join(daemonDir, DAEMON_CLI_RELATIVE)
+  const manifest = join(daemonDir, DAEMON_PACKAGE_MANIFEST)
+  if (!existsSync(cli) || !existsSync(manifest)) return null
+  const version = readPackageVersion(manifest)
+  return version === null ? null : { cli, version }
+}
+
+function* ancestorDirs(startDir: string): Generator<string> {
+  let current = resolve(startDir)
+  for (;;) {
+    yield current
+    const parent = dirname(current)
+    if (parent === current) return
+    current = parent
+  }
+}
+
 /**
- * LSP builtin (parity with src/mcp/lsp.ts `createLspMcpConfig`). V1 sets
- * `enabled: false` when the lsp-daemon CLI is not resolvable; the isolated V2
- * harness has no daemon, so this injects a disabled local server. The full
- * daemon bootstrap (ancestor CLI resolver + npm install steps) is NOT ported —
- * see the honest-limitation note in the task evidence.
+ * Walk up from the plugin's own directory looking for the daemon executable.
+ * Two layouts are checked per ancestor: the workspace layout shipped in this
+ * repository (`<ancestor>/packages/lsp-daemon/dist/cli.js`) and the published
+ * layout (`<ancestor>/node_modules/@code-yeongyu/lsp-daemon/dist/cli.js`).
+ * Nothing here reads a home-directory literal; every candidate is derived from
+ * the starting directory at runtime.
+ */
+function resolveDaemonFromDisk(startDir: string): ResolvedDaemon | null {
+  for (const ancestor of ancestorDirs(startDir)) {
+    const workspace = resolveAt(join(ancestor, "packages", "lsp-daemon"))
+    if (workspace !== null) return workspace
+    const installed = resolveAt(join(ancestor, "node_modules", DAEMON_PACKAGE_NAME))
+    if (installed !== null) return installed
+  }
+  return null
+}
+
+function resolveDaemonFromEnv(env: Record<string, string | undefined>): ResolvedDaemon | null {
+  const cli = env.OMO_LSP_DAEMON_CLI
+  const version = env.OMO_LSP_DAEMON_VERSION
+  if (typeof cli !== "string" || cli.length === 0) return null
+  if (typeof version !== "string" || version.length === 0) return null
+  return { cli, version }
+}
+
+/**
+ * LSP builtin (parity with src/mcp/lsp.ts `createLspMcpConfig`). The daemon
+ * requires BOTH `OMO_LSP_DAEMON_CLI` and `OMO_LSP_DAEMON_VERSION`, so a
+ * half-configured pair would die on its own first line without logging.
+ *
+ * Resolution order: a complete environment pair wins; otherwise the executable
+ * and its version are resolved from disk (workspace or published layout).
+ * When both resolve, the server is enabled and the pair is passed through
+ * `environment`. When they do not, the server stays disabled with an inert
+ * `node -e process.exit(1)` command so the host never spawns a broken daemon.
  */
 export function createLspServerConfig(
   env: Record<string, string | undefined> = process.env,
+  startDir: string = import.meta.dir,
 ): V1LocalMcpConfig {
-  const daemonCli = env.OMO_LSP_DAEMON_CLI
-  const available = typeof daemonCli === "string" && daemonCli.length > 0
+  const resolved = resolveDaemonFromEnv(env) ?? resolveDaemonFromDisk(startDir)
   return {
     type: "local",
-    command: available ? [daemonCli, "mcp"] : ["node", "-e", "process.exit(1)"],
-    enabled: available,
+    command: resolved !== null ? [resolved.cli, "mcp"] : ["node", "-e", "process.exit(1)"],
+    enabled: resolved !== null,
     ...(env.LSP_TOOLS_MCP_CWD !== undefined ? { cwd: env.LSP_TOOLS_MCP_CWD } : {}),
+    ...(resolved !== null
+      ? {
+          environment: {
+            OMO_LSP_DAEMON_CLI: resolved.cli,
+            OMO_LSP_DAEMON_VERSION: resolved.version,
+          },
+        }
+      : {}),
   }
 }
 
