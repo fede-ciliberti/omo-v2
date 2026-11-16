@@ -1143,8 +1143,8 @@ Maximum status checks: 2. Then stop regardless.
 </Style>`
 
 // ---------------------------------------------------------------------------
-// Primary-agent system prompts (hephaestus and atlas are still reduced ports —
-// see the header gap note; sisyphus ships the canonical doctrine module)
+// Primary-agent system prompts (hephaestus and atlas are still reduced ports;
+// see the header gap note. Sisyphus ships the canonical doctrine module)
 // ---------------------------------------------------------------------------
 
 const HEPHAESTUS_SYSTEM = `<Role>

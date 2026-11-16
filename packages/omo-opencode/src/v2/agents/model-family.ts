@@ -40,6 +40,20 @@ export const FAMILY_IDS = [
   "fallback",
 ] as const satisfies readonly FamilyId[]
 
+/**
+ * `kimi-for-coding` is the Kimi product id, and this plan routes it to `kimi-k3`
+ * (todo 6 acceptance in `.omo/plans/v2-sisyphus-orchestration-port.md`).
+ *
+ * Known discrepancy, recorded rather than hidden: V1's own router would reach
+ * `kimi-k2-6` for this literal id, because none of `isKimiK3Model`'s predicates
+ * match it and `isKimiK2Model` accepts any name containing "kimi"
+ * (`omo-v1/dev:packages/model-core/src/model-family-detectors.ts:79-84,65-70`).
+ * `provider-model-id-transform.ts:58-61` is the opposite direction: under the
+ * `kimi-coding` / `kimi-for-coding` providers it rewrites the model string
+ * `kimi-k3` to `k3`, which does not establish a k3 family for this id.
+ * The alias is kept because the approved plan names it; changing it is a
+ * doctrine decision, not a mechanical fix.
+ */
 const KIMI_CODING_ALIASES: Record<string, string> = {
   "kimi-for-coding": "kimi-k3",
 }

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { composeDoctrine } from "./doctrine-hook"
 import { FAMILY_IDS } from "./model-family"
 import { FAMILY_OPTIONS, FAMILY_OVERLAYS } from "./family-overlays"
 import { SISYPHUS_DOCTRINE_BASE } from "./sisyphus-doctrine"
@@ -36,16 +37,29 @@ describe("FAMILY_OVERLAYS", () => {
     expect(fable.length).toBeGreaterThan(0)
   })
 
-  test("the opus-5 counter-doctrine is in the overlay and not in the base", () => {
-    // given the D1 marker
-    const marker = "OVER-DELEGATION"
-
-    // when the opus-5 overlay and the base doctrine are read
+  test("the opus-5 counter-doctrine is a distinct delta the base does not embed", () => {
+    // given the opus-5 overlay, the base doctrine and the other non-empty deltas
     const overlay = FAMILY_OVERLAYS["claude-opus-5"]
+    const otherDeltas = FAMILY_IDS.filter(
+      (family) => family !== "claude-opus-5" && family !== "fallback",
+    ).map((family) => FAMILY_OVERLAYS[family])
 
-    // then the overlay carries it and the base does not
-    expect(overlay.includes(marker)).toBe(true)
-    expect(SISYPHUS_DOCTRINE_BASE.includes(marker)).toBe(false)
+    // when compared
+    // then it is a real string, the base does not swallow it, and no other family shares it
+    expect(overlay.length).toBeGreaterThan(0)
+    expect(SISYPHUS_DOCTRINE_BASE.includes(overlay)).toBe(false)
+    expect(otherDeltas).not.toContain(overlay)
+  })
+
+  test("the composed doctrine differs between an overlay family and the fallback", () => {
+    // given one model per side of the D1 decision
+    const opus = composeDoctrine("anthropic/claude-opus-5")
+    const fallback = composeDoctrine("vllm/deepseek-v4.1-flash-pool")
+
+    // when both are assembled for the request
+    // then the opus-5 request carries strictly more doctrine than the fallback one
+    expect(fallback).toBe(SISYPHUS_DOCTRINE_BASE)
+    expect(opus.length).toBeGreaterThan(fallback.length)
   })
 
   test("base plus overlays stays within the 12000 character budget", () => {

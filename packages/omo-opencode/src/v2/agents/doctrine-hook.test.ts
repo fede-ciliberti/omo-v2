@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import { ALLOWED_OPTION_KEYS, applySisyphusDoctrine, composeDoctrine } from "./doctrine-hook"
+import { applySisyphusDoctrine, composeDoctrine } from "./doctrine-hook"
+
+const EXPECTED_OPTION_KEYS = ["maxTokens", "temperature", "topP", "topK"]
 import { FAMILY_OVERLAYS } from "./family-overlays"
 import { SISYPHUS_DOCTRINE_BASE } from "./sisyphus-doctrine"
 
@@ -44,7 +46,7 @@ describe("applySisyphusDoctrine", () => {
 
     // then
     for (const key of Object.keys(input.options)) {
-      expect(ALLOWED_OPTION_KEYS).toContain(key as (typeof ALLOWED_OPTION_KEYS)[number])
+      expect(EXPECTED_OPTION_KEYS).toContain(key)
     }
     expect(input.options.temperature).toBe(0.5)
   })
