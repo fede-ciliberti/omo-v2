@@ -6,6 +6,8 @@ import { registerMcp } from "./mcp"
 import { registerOrchestration } from "./orchestration"
 import { registerSkills } from "./skills"
 import { registerToolsAndHooks } from "./tools"
+import { SIDEBAR_EVENT, SIDEBAR_METHOD, sidebarRpcDefinition } from "./tui-sidebar/definition"
+import { createSidebarChannel } from "./tui-sidebar/channel"
 
 /**
  * [OMC] v2 entry point — full server-side wiring (tasks 9-15).
@@ -40,6 +42,18 @@ export const omoV2Plugin = Plugin.define({
     })
 
     const cleanups: Array<() => Promise<void>> = []
+
+    try {
+      const sidebar = createSidebarChannel(ctx)
+      const sidebarRpc = await ctx.rpc.register(sidebarRpcDefinition, {
+        [SIDEBAR_METHOD]: async () => sidebar.snapshot(),
+      })
+      cleanups.push(
+        await sidebar.start((snapshot) => sidebarRpc.events.emit(SIDEBAR_EVENT, snapshot)),
+      )
+    } catch (error) {
+      console.error("[OMC] v2 sidebar channel failed:", error)
+    }
 
     const disposeTools = await registerToolsAndHooks(ctx)
     cleanups.push(disposeTools)
