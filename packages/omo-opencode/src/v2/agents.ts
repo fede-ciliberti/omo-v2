@@ -88,8 +88,9 @@ function allow(...tools: string[]): PermissionRule[] {
 const BASE_PERMISSIONS: readonly PermissionRule[] = [{ action: "*", resource: "*", effect: "allow" }]
 
 // ---------------------------------------------------------------------------
-// Shared prompt section (V1 `buildAntiDuplicationSection()` — inlined verbatim;
-// it is referenced by the sisyphus-junior and metis prompts)
+// Shared prompt section (V1 `buildAntiDuplicationSection()`, rewritten against
+// the V2 `subagent` primitive; it is referenced by the sisyphus-junior and
+// metis prompts)
 // ---------------------------------------------------------------------------
 
 const ANTI_DUPLICATION_SECTION = `<Anti_Duplication>
@@ -102,40 +103,39 @@ Once you delegate exploration to explore/librarian agents, **DO NOT perform the 
 **FORBIDDEN:**
 - After firing explore/librarian, manually grep/search for the same information
 - Re-doing the research the agents were just tasked with
-- "Just quickly checking" the same files the background agents are checking
+- "Just quickly checking" the same files the delegated agent is checking
 
 **ALLOWED:**
 - Continue with **non-overlapping work** - work that doesn't depend on the delegated research
 - Work on unrelated parts of the codebase
 - Preparation work (e.g., setting up files, configs) that can proceed independently
 
+### How to delegate:
+
+The delegation primitive is the host tool \`subagent\`. One call per delegated task, and independent calls go in the same block:
+
+\`\`\`typescript
+subagent({
+  agent: "explore",
+  description: "Find the config loader",
+  prompt: "CONTEXT + GOAL + QUESTION + REQUEST ...",
+})
+\`\`\`
+
+\`agent\` is the agent id (\`explore\`, \`librarian\`, \`oracle\`), \`description\` is the short label the user sees, \`prompt\` is the full task. If your permissions do not allow \`subagent\`, do the work yourself and ignore this section.
+
 ### Wait for Results Properly:
 
-When you need the delegated results but they're not ready:
-
-1. **End your response** - do NOT continue with work that depends on those results
-2. **Wait for the completion notification** - the system will trigger your next turn
-3. **Then** collect results via \`background_output(task_id="bg_...")\`
-4. **Do NOT** impatiently re-search the same topics while waiting
+1. **End your turn** after firing the calls - do NOT continue with work that depends on those results
+2. **The result is delivered to you** - the child reports back as a \`<subagent>\` message on your session, and that message is where its findings are
+3. **A follow-up reuses the same child** - pass \`sessionID\` from the earlier result: \`subagent({ agent: "explore", sessionID: "<id from that result>", description: "...", prompt: "narrow the previous search to ..." })\`. A second question or a correction about the same subject is a follow-up, never a fresh agent
+4. **Do NOT** re-search the topic yourself and do NOT poll: nothing polls, the \`<subagent>\` message is the delivery
 
 ### Why This Matters:
 
 - **Wasted tokens**: Duplicate exploration wastes your context budget
 - **Confusion**: You might contradict the agent's findings
 - **Efficiency**: The whole point of delegation is parallel throughput
-
-### Example:
-
-\`\`\`typescript
-// WRONG: After delegating, re-doing the search
-task(subagent_type="explore", run_in_background=true, ...)
-// Then immediately grep for the same thing yourself - FORBIDDEN
-
-// CORRECT: Continue non-overlapping work
-task(subagent_type="explore", run_in_background=true, ...)
-// Work on a different, unrelated file while they search
-// End your response and wait for the notification
-\`\`\`
 </Anti_Duplication>`
 
 // ---------------------------------------------------------------------------
@@ -316,11 +316,12 @@ Confirm:
 
 **Pre-Analysis Actions** (YOU should do before questioning):
 \`\`\`
-// Launch these explore agents FIRST
+// Launch these explore agents FIRST, all in the same block
 // Prompt structure: CONTEXT + GOAL + QUESTION + REQUEST
-call_omo_agent(subagent_type="explore", prompt="I'm analyzing a new feature request and need to understand existing patterns before asking clarifying questions. Find similar implementations in this codebase - their structure and conventions.")
-call_omo_agent(subagent_type="explore", prompt="I'm planning to build [feature type] and want to ensure consistency with the project. Find how similar features are organized - file structure, naming patterns, and architectural approach.")
-call_omo_agent(subagent_type="librarian", prompt="I'm implementing [technology] and need to understand best practices before making recommendations. Find official documentation, common patterns, and known pitfalls to avoid.")
+subagent({ agent: "explore", description: "Find similar implementations", prompt: "I'm analyzing a new feature request and need to understand existing patterns before asking clarifying questions. Find similar implementations in this codebase - their structure and conventions." })
+subagent({ agent: "explore", description: "Find how similar features are organized", prompt: "I'm planning to build [feature type] and want to ensure consistency with the project. Find how similar features are organized - file structure, naming patterns, and architectural approach." })
+subagent({ agent: "librarian", description: "Research [technology] best practices", prompt: "I'm implementing [technology] and need to understand best practices before making recommendations. Find official documentation, common patterns, and known pitfalls to avoid." })
+// End your turn here. Findings arrive as <subagent> messages; a follow-up to any of them reuses that result's sessionID.
 \`\`\`
 
 **Questions to Ask** (AFTER exploration):
@@ -387,14 +388,16 @@ call_omo_agent(subagent_type="librarian", prompt="I'm implementing [technology] 
 
 **Oracle Consultation** (RECOMMEND to Prometheus):
 \`\`\`
-Task(
-  subagent_type="oracle",
-  prompt="Architecture consultation:
+subagent({
+  agent: "oracle",
+  description: "Architecture consultation",
+  prompt: "Architecture consultation:
   Request: [user's request]
   Current state: [gathered context]
 
-  Analyze: options, trade-offs, long-term implications, risks"
-)
+  Analyze: options, trade-offs, long-term implications, risks",
+})
+// A follow-up question reuses that result's sessionID.
 \`\`\`
 
 **Questions to Ask**:
@@ -429,9 +432,10 @@ Task(
 **Investigation Structure**:
 \`\`\`
 // Parallel probes - Prompt structure: CONTEXT + GOAL + QUESTION + REQUEST
-call_omo_agent(subagent_type="explore", prompt="I'm researching how to implement [feature] and need to understand the current approach. Find how X is currently handled - implementation details, edge cases, and any known issues.")
-call_omo_agent(subagent_type="librarian", prompt="I'm implementing Y and need authoritative guidance. Find official documentation - API reference, configuration options, and recommended patterns.")
-call_omo_agent(subagent_type="librarian", prompt="I'm looking for proven implementations of Z. Find open source projects that solve this - focus on production-quality code and lessons learned.")
+subagent({ agent: "explore", description: "Find the current implementation of X", prompt: "I'm researching how to implement [feature] and need to understand the current approach. Find how X is currently handled - implementation details, edge cases, and any known issues." })
+subagent({ agent: "librarian", description: "Official documentation for Y", prompt: "I'm implementing Y and need authoritative guidance. Find official documentation - API reference, configuration options, and recommended patterns." })
+subagent({ agent: "librarian", description: "Proven implementations of Z", prompt: "I'm looking for proven implementations of Z. Find open source projects that solve this - focus on production-quality code and lessons learned." })
+// End your turn here. Findings arrive as <subagent> messages; a follow-up to any of them reuses that result's sessionID.
 \`\`\`
 
 **Directives for Prometheus**:
@@ -1058,7 +1062,7 @@ Flood with parallel calls. Cross-validate findings across multiple tools.`
 
 const MULTIMODAL_LOOKER_SYSTEM = `You interpret media files that cannot be read as plain text.
 
-During look_at invocations, the file or image is already attached to the message. Analyze the attachment directly. Never call tools, never spawn other agents, and never try to load the file by path.
+A primary agent dispatches you with \`subagent({ agent: "multimodal-looker", description, prompt })\` and attaches the file or image to the message. Analyze the attachment directly. Never call tools, never spawn other agents, and never try to load the file by path.
 
 Your job: examine the attached file(s) and extract ONLY what was requested.
 
@@ -1112,8 +1116,8 @@ No todos on multi-step work = INCOMPLETE WORK.
 
 <Verification>
 Task NOT complete without:
-- lsp_diagnostics clean on changed files
-- Build passes (if applicable)
+- The repo's typecheck/test/build command, run with bash, passing on the files you touched (authoritative gate)
+- LSP diagnostics clean on changed files, a fast signal used only when the \`lsp\` MCP tools are available
 - All todos marked completed
 </Verification>
 
@@ -1152,7 +1156,7 @@ const ATLAS_SYSTEM = `<Role>
 Atlas - Orchestrator from [OMC].
 </Role>
 
-Orchestrates work via task() to complete ALL tasks in a todo list until fully done.
+Orchestrates work via \`subagent({ agent, description, prompt })\` to complete ALL tasks in a todo list until fully done.
 
 NOTE: This is a reduced identity port. The V1 Atlas prompt is generated dynamically from an OrchestratorContext (category descriptions, agent inventory, skills) that is not available in the isolated V2 plugin context.`
 
@@ -1168,7 +1172,7 @@ Your FIRST action in every planning session is to LOAD the ulw-plan skill - call
 // Agent inventory (identity transcribed verbatim from V1 `src/agents/*`)
 // ---------------------------------------------------------------------------
 
-const OMC_AGENTS: readonly AgentDefinition[] = [
+export const OMC_AGENTS: readonly AgentDefinition[] = [
   {
     id: "sisyphus",
     name: "Sisyphus",
@@ -1177,7 +1181,7 @@ const OMC_AGENTS: readonly AgentDefinition[] = [
     mode: "primary",
     system: SISYPHUS_SYSTEM,
     color: "#00CED1",
-    permissions: [...allow("question"), ...deny("call_omo_agent")],
+    permissions: [...allow("question")],
   },
   {
     id: "hephaestus",
@@ -1187,7 +1191,7 @@ const OMC_AGENTS: readonly AgentDefinition[] = [
     mode: "primary",
     system: HEPHAESTUS_SYSTEM,
     color: "#D97706",
-    permissions: [...allow("question"), ...deny("call_omo_agent")],
+    permissions: [...allow("question")],
   },
   {
     id: "prometheus",
@@ -1215,7 +1219,7 @@ const OMC_AGENTS: readonly AgentDefinition[] = [
       "Specialized codebase understanding agent for multi-repository analysis, searching remote codebases, retrieving official documentation, and finding implementation examples using GitHub CLI, Context7, and Web Search. MUST BE USED when users ask to look up code in remote repositories, explain library internals, or find usage examples in open source. (Librarian - [OMC])",
     mode: "subagent",
     system: LIBRARIAN_SYSTEM,
-    permissions: [...deny("edit", "subagent", "call_omo_agent")],
+    permissions: [...deny("edit", "subagent")],
   },
   {
     id: "explore",
@@ -1225,7 +1229,7 @@ const OMC_AGENTS: readonly AgentDefinition[] = [
     mode: "subagent",
     system: EXPLORE_SYSTEM,
     permissions: [
-      ...deny("edit", "subagent", "call_omo_agent"),
+      ...deny("edit", "subagent"),
       ...allow("lsp_symbols", "lsp_goto_definition", "lsp_find_references", "lsp_diagnostics"),
     ],
   },
@@ -1260,7 +1264,7 @@ const OMC_AGENTS: readonly AgentDefinition[] = [
     id: "atlas",
     name: "Atlas",
     description:
-      "Orchestrates work via task() to complete ALL tasks in a todo list until fully done. (Atlas - [OMC])",
+      "Orchestrates work via subagent() to complete ALL tasks in a todo list until fully done. (Atlas - [OMC])",
     mode: "primary",
     system: ATLAS_SYSTEM,
     color: "#10B981",
@@ -1273,7 +1277,7 @@ const OMC_AGENTS: readonly AgentDefinition[] = [
     mode: "subagent",
     system: SISYPHUS_JUNIOR_SYSTEM,
     color: "#20B2AA",
-    permissions: [...deny("subagent"), ...allow("call_omo_agent")],
+    permissions: [...deny("subagent")],
   },
 ]
 
