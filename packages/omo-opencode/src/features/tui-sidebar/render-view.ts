@@ -1,6 +1,7 @@
 import { LABEL_MAX } from "./constants"
 import { box, text } from "./element-helpers"
 import type { ViewNode } from "./element-helpers"
+import type { SidebarPalette } from "./theme"
 import { assertNever } from "./state-types"
 import type {
   AgentsState,
@@ -11,18 +12,7 @@ import type {
   SidebarView,
 } from "./state-types"
 
-type ThemeLike = {
-  readonly error?: unknown
-  readonly text?: unknown
-  readonly textMuted?: unknown
-  readonly warning?: unknown
-  readonly success?: unknown
-  readonly info?: unknown
-  readonly accent?: unknown
-  readonly borderSubtle?: unknown
-}
-
-export function buildViewNodes(view: SidebarView, theme: ThemeLike): ViewNode[] {
+export function buildViewNodes(view: SidebarView, theme: SidebarPalette): ViewNode[] {
   switch (view.kind) {
     case "active":
       return [
@@ -64,7 +54,7 @@ function linesForView(view: SidebarView): string[] {
   }
 }
 
-function configBannerNodes(banner: ConfigBanner, theme: ThemeLike): ViewNode[] {
+function configBannerNodes(banner: ConfigBanner, theme: SidebarPalette): ViewNode[] {
   switch (banner.kind) {
     case "none":
       return []
@@ -86,7 +76,7 @@ function configBannerLines(banner: ConfigBanner): string[] {
   }
 }
 
-function loopNodes(loop: LoopState, theme: ThemeLike): ViewNode[] {
+function loopNodes(loop: LoopState, theme: SidebarPalette): ViewNode[] {
   switch (loop.kind) {
     case "none":
       return []
@@ -123,7 +113,7 @@ function loopLines(loop: LoopState): string[] {
   }
 }
 
-function agentNodes(agents: AgentsState, theme: ThemeLike): ViewNode[] {
+function agentNodes(agents: AgentsState, theme: SidebarPalette): ViewNode[] {
   switch (agents.kind) {
     case "none":
       return []
@@ -151,7 +141,7 @@ function agentLines(agents: AgentsState): string[] {
   }
 }
 
-function jobNodes(jobs: JobBoardState, theme: ThemeLike): ViewNode[] {
+function jobNodes(jobs: JobBoardState, theme: SidebarPalette): ViewNode[] {
   switch (jobs.kind) {
     case "none":
       return []
@@ -184,7 +174,7 @@ function jobLines(jobs: JobBoardState): string[] {
   }
 }
 
-function brokenNodes(messages: readonly string[], theme: ThemeLike): ViewNode[] {
+function brokenNodes(messages: readonly string[], theme: SidebarPalette): ViewNode[] {
   return [
     section("Config", theme, [
       text({ fg: theme.error }, "config invalid - run doctor"),
@@ -193,7 +183,7 @@ function brokenNodes(messages: readonly string[], theme: ThemeLike): ViewNode[] 
   ]
 }
 
-function idleNodes(roster: RosterState, theme: ThemeLike): ViewNode[] {
+function idleNodes(roster: RosterState, theme: SidebarPalette): ViewNode[] {
   return [section("Models", theme, rosterLines(roster).map((line) => text({ fg: theme.text }, line)))]
 }
 
@@ -208,15 +198,16 @@ function rosterLines(roster: RosterState): string[] {
   }
 }
 
-function section(title: string, theme: ThemeLike, children: readonly ViewNode[]): ViewNode {
+function section(title: string, theme: SidebarPalette, children: readonly ViewNode[]): ViewNode {
   return box({ borderStyle: "single", borderColor: theme.borderSubtle, flexDirection: "column", padding: 1 }, [
     text({ fg: theme.info }, title),
     ...children,
   ])
 }
 
-function truncate(value: string): string {
-  return value.length <= LABEL_MAX ? value : `${value.slice(0, LABEL_MAX - 3)}...`
+function truncate(value: string | null | undefined): string {
+  const label = value ?? ""
+  return label.length <= LABEL_MAX ? label : `${label.slice(0, LABEL_MAX - 3)}...`
 }
 
 function activeGoalLabel(activeGoal: string | null): string {
