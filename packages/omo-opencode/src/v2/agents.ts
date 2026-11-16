@@ -72,6 +72,21 @@ function allow(...tools: string[]): PermissionRule[] {
   return tools.map((tool) => ({ action: tool, resource: "*", effect: "allow" as const }))
 }
 
+/**
+ * Catch-all that must precede every agent's own rules.
+ *
+ * `registerAgents` replaces `agent.permissions`, so without this prefix the agent
+ * loses the base policy that opencode gives builtin agents and any action the
+ * definition does not enumerate (`external_directory`, `websearch`, `skill`,
+ * `subagent`, `execute`, MCP tools, ...) falls through to the evaluator's default
+ * `ask`. A pending `ask` only gets answered while its TUI tab is focused, so a
+ * background session blocks forever.
+ *
+ * Rules are evaluated last-match-wins, so this only fills the gaps: an explicit
+ * `deny` (or `ask`) declared afterwards still wins.
+ */
+const BASE_PERMISSIONS: readonly PermissionRule[] = [{ action: "*", resource: "*", effect: "allow" }]
+
 // ---------------------------------------------------------------------------
 // Shared prompt section (V1 `buildAntiDuplicationSection()` — inlined verbatim;
 // it is referenced by the sisyphus-junior and metis prompts)
@@ -1182,7 +1197,7 @@ const OMC_AGENTS: readonly AgentDefinition[] = [
     mode: "primary",
     system: PROMETHEUS_SYSTEM,
     color: "#FF5722",
-    permissions: [...allow("edit", "bash", "webfetch", "question")],
+    permissions: [...allow("edit", "shell", "webfetch", "question")],
   },
   {
     id: "oracle",
@@ -1191,7 +1206,7 @@ const OMC_AGENTS: readonly AgentDefinition[] = [
       "Read-only consultation agent. High-IQ reasoning specialist for debugging hard problems and high-difficulty architecture design. (Oracle - [OMC])",
     mode: "subagent",
     system: ORACLE_SYSTEM,
-    permissions: [...deny("write", "edit", "apply_patch", "task")],
+    permissions: [...deny("edit", "subagent")],
   },
   {
     id: "librarian",
@@ -1200,7 +1215,7 @@ const OMC_AGENTS: readonly AgentDefinition[] = [
       "Specialized codebase understanding agent for multi-repository analysis, searching remote codebases, retrieving official documentation, and finding implementation examples using GitHub CLI, Context7, and Web Search. MUST BE USED when users ask to look up code in remote repositories, explain library internals, or find usage examples in open source. (Librarian - [OMC])",
     mode: "subagent",
     system: LIBRARIAN_SYSTEM,
-    permissions: [...deny("write", "edit", "apply_patch", "task", "call_omo_agent")],
+    permissions: [...deny("edit", "subagent", "call_omo_agent")],
   },
   {
     id: "explore",
@@ -1210,7 +1225,7 @@ const OMC_AGENTS: readonly AgentDefinition[] = [
     mode: "subagent",
     system: EXPLORE_SYSTEM,
     permissions: [
-      ...deny("write", "edit", "apply_patch", "task", "call_omo_agent"),
+      ...deny("edit", "subagent", "call_omo_agent"),
       ...allow("lsp_symbols", "lsp_goto_definition", "lsp_find_references", "lsp_diagnostics"),
     ],
   },
@@ -1230,7 +1245,7 @@ const OMC_AGENTS: readonly AgentDefinition[] = [
       "Pre-planning consultant that analyzes requests to identify hidden intentions, ambiguities, and AI failure points. (Metis - [OMC])",
     mode: "subagent",
     system: METIS_SYSTEM,
-    permissions: [...deny("write", "edit", "apply_patch")],
+    permissions: [...deny("edit")],
   },
   {
     id: "momus",
@@ -1239,7 +1254,7 @@ const OMC_AGENTS: readonly AgentDefinition[] = [
       "Expert reviewer for evaluating work plans against rigorous clarity, verifiability, and completeness standards. (Momus - [OMC])",
     mode: "subagent",
     system: MOMUS_SYSTEM,
-    permissions: [...deny("write", "edit", "apply_patch")],
+    permissions: [...deny("edit")],
   },
   {
     id: "atlas",
@@ -1258,7 +1273,7 @@ const OMC_AGENTS: readonly AgentDefinition[] = [
     mode: "subagent",
     system: SISYPHUS_JUNIOR_SYSTEM,
     color: "#20B2AA",
-    permissions: [...deny("task"), ...allow("call_omo_agent")],
+    permissions: [...deny("subagent"), ...allow("call_omo_agent")],
   },
 ]
 
@@ -1285,7 +1300,7 @@ export async function registerAgents(ctx: PluginContext): Promise<() => Promise<
         if (def.color !== undefined) {
           agent.color = def.color
         }
-        agent.permissions = [...(def.permissions ?? [])]
+        agent.permissions = [...BASE_PERMISSIONS, ...(def.permissions ?? [])]
       })
     }
 

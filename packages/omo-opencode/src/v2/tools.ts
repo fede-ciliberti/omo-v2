@@ -1,6 +1,8 @@
+import { spawnSync } from "node:child_process"
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { isAbsolute, join, relative, resolve, sep } from "node:path"
 import { Plugin } from "@opencode/plugin"
+import { findSgBinarySync } from "@oh-my-opencode/utils"
 import { z } from "zod"
 
 /**
@@ -73,6 +75,133 @@ const grepInputSchema = z.object({
 })
 
 type GrepInput = z.infer<typeof grepInputSchema>
+
+export const astGrepInputSchema = z.object({
+  pattern: z
+    .string()
+    .describe(
+      'ast-grep structural pattern using meta-variables: `$A` matches one node, `$$$ARGS` matches zero or more. ' +
+        'Example: "function $NAME($$$ARGS) { $$$BODY }" or "import { $$$NAMES } from \'$MOD\'". ' +
+        "The pattern must be a complete, syntactically valid construct for the target language.",
+    ),
+  lang: z
+    .string()
+    .describe(
+      'Language of the pattern and target files (for example "ts", "tsx", "js", "python", "rust", "go", "java").',
+    ),
+  path: z
+    .string()
+    .optional()
+    .describe("File or directory to search. Defaults to the current working directory."),
+  rewrite: z
+    .string()
+    .optional()
+    .describe(
+      "Optional replacement template using the same meta-variables. When provided the tool runs a DRY RUN " +
+        "and returns the rewritten text per match; it never writes files.",
+    ),
+  max_matches: z
+    .number()
+    .optional()
+    .describe("Maximum number of matches to return. Defaults to 50; pass 0 for no limit."),
+})
+
+export type AstGrepInput = z.infer<typeof astGrepInputSchema>
+
+// ---------------------------------------------------------------------------
+// ast-grep execution (native tool parity with the AST path)
+// ---------------------------------------------------------------------------
+
+const AST_GREP_TIMEOUT_MS = 30_000
+const AST_GREP_MAX_BUFFER = 32 * 1024 * 1024
+
+type AstGrepMatch = {
+  readonly file?: string
+  readonly lines?: string
+  readonly text?: string
+  readonly range?: {
+    readonly start?: { readonly line?: number; readonly column?: number }
+    readonly end?: { readonly line?: number; readonly column?: number }
+  }
+  readonly replacement?: string
+}
+
+function formatAstGrepMatch(match: AstGrepMatch): string {
+  const file = match.file ?? "<unknown>"
+  const line = (match.range?.start?.line ?? 0) + 1
+  const column = (match.range?.start?.column ?? 0) + 1
+  const body = (match.replacement ?? match.text ?? "").trim()
+  return `${file}:${line}:${column}\n${body}`
+}
+
+export async function runAstGrep(input: AstGrepInput, directory: string): Promise<string> {
+  const binary = findSgBinarySync()
+  if (binary === null) {
+    throw new Error(
+      "[ast-grep] The `sg` binary is not provisioned. Run `omo doctor` to install it, or use the `ast-grep` skill " +
+        "helper (`python3 scripts/ast_grep_helper.py`) as a fallback.",
+    )
+  }
+
+  const target = input.path ? resolve(directory, input.path) : directory
+  const args = ["run", "--pattern", input.pattern, "--lang", input.lang, "--json=stream"]
+  if (input.rewrite !== undefined && input.rewrite !== "") {
+    args.push("--rewrite", input.rewrite)
+  }
+  args.push(target)
+
+  const result = spawnSync(binary, args, {
+    cwd: directory,
+    encoding: "utf8",
+    timeout: AST_GREP_TIMEOUT_MS,
+    maxBuffer: AST_GREP_MAX_BUFFER,
+  })
+
+  if (result.error !== undefined && result.error !== null) {
+    throw new Error(`[ast-grep] Failed to execute sg: ${result.error.message}`)
+  }
+
+  const stderr = (result.stderr ?? "").trim()
+  const stdout = result.stdout ?? ""
+
+  const matches: AstGrepMatch[] = []
+  for (const rawLine of stdout.split("\n")) {
+    const line = rawLine.trim()
+    if (line === "" || !line.startsWith("{")) continue
+    try {
+      matches.push(JSON.parse(line) as AstGrepMatch)
+    } catch {
+      // ast-grep may interleave non-JSON diagnostics on stdout; ignore unparsable lines.
+    }
+  }
+
+  // ast-grep exit codes: 0 = matches found, 1 = no matches, >1 = hard error.
+  if (matches.length === 0) {
+    if (result.status !== null && result.status > 1) {
+      throw new Error(`[ast-grep] sg failed with exit code ${result.status}${stderr ? `: ${stderr}` : ""}`)
+    }
+    return (
+      `No structural matches for pattern ${JSON.stringify(input.pattern)} (lang=${input.lang}) in ${target}.\n\n` +
+      "ast-grep matches complete syntactic constructs, so an overly specific pattern (explicit return types, modifiers, " +
+      "exact argument lists) returns nothing even when similar code exists. Retry with a looser shape, for example " +
+      "`function $NAME($$$ARGS) { $$$BODY }`, `const $A = $B`, or `import { $$$NAMES } from '$MOD'`. " +
+      "If the target is really literal text, use `grep` instead." +
+      (stderr ? `\n\nsg diagnostics:\n${stderr}` : "")
+    )
+  }
+
+  const limit = input.max_matches ?? 50
+  const shown = limit === 0 ? matches : matches.slice(0, limit)
+  const header = input.rewrite !== undefined
+    ? `DRY RUN — ${matches.length} structural match(es). No files were modified.\n`
+    : `${matches.length} structural match(es).\n`
+  const body = shown.map(formatAstGrepMatch).join("\n\n")
+  const truncated = shown.length < matches.length
+    ? `\n\n... output truncated to ${shown.length} of ${matches.length} matches. Raise max_matches or narrow the path.`
+    : ""
+
+  return header + body + truncated
+}
 
 // ---------------------------------------------------------------------------
 // Safety limits (mirrors the OMC V1 contract, tightened for the native walk)
@@ -405,6 +534,13 @@ export async function registerToolsAndHooks(ctx: PluginContext): Promise<() => P
       }
       return runGrep(parsed.data, directory)
     },
+    ast_grep_search: (input) => {
+      const parsed = astGrepInputSchema.safeParse(input)
+      if (!parsed.success) {
+        return Promise.reject(new Error(`invalid ast_grep_search input: ${parsed.error.message}`))
+      }
+      return runAstGrep(parsed.data, directory)
+    },
   }
 
   // 1. Tool registration (V1 `tool` registry → V2 `ctx.tool.transform`).
@@ -426,10 +562,27 @@ export async function registerToolsAndHooks(ctx: PluginContext): Promise<() => P
         "Fast content search tool with safety limits (60s timeout, 256KB output). " +
         "Searches file contents using regular expressions. " +
         'Supports full regex syntax (eg. "log.*Error", "function\\s+\\w+", etc.). ' +
-        'Filter files by pattern with the include parameter (eg. "*.js", "*.{ts,tsx}"). ' +
-        'Output modes: "content" shows matching lines, "files_with_matches" shows only file paths (default), "count" shows match counts per file.',
+        'Filter files by pattern with the include parameter (eg. "*.js", "*.{js,ts,tsx}"). ' +
+        'Output modes: "content" shows matching lines, "files_with_matches" shows only file paths (default), "count" shows match counts per file. ' +
+        "For symbol-level questions (where is X defined, who calls X, rename X) prefer the lsp_* tools. " +
+        "For structural code shapes (every function taking a Request, every class extending Y, codemods) prefer `ast_grep_search`.",
       input: grepInputSchema,
       execute: async (input: GrepInput) => ({ content: await runGrep(input, directory) }),
+    })
+
+    editor.add({
+      name: "ast_grep_search",
+      description:
+        "AST-aware structural search and rewrite preview across source code. " +
+        "Unlike `grep`, the pattern is parsed as real syntax, so whitespace, formatting, and variable names do not matter. " +
+        "Use it when the target is a code SHAPE: every function with a given signature, every call shaped like X, every class extending Y, " +
+        "every missing `await`, every empty catch block, or a deterministic codemod preview. " +
+        "Meta-variables: `$A` matches exactly one node, `$$$ARGS` matches zero or more. " +
+        'Example: `ast_grep_search({ pattern: "function $NAME($$$ARGS) { $$$BODY }", lang: "ts" })`. ' +
+        "Pass `rewrite` to preview a transformation without writing files. " +
+        "Use `grep` instead for literal strings, comments, log messages, or filenames; use the lsp_* tools for definitions, references, and renames.",
+      input: astGrepInputSchema,
+      execute: async (input: AstGrepInput) => ({ content: await runAstGrep(input, directory) }),
     })
   })
 

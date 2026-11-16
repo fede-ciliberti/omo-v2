@@ -12,6 +12,7 @@ import {
 } from "../../features/tui-sidebar/derivers"
 import { readMirror } from "../../features/tui-sidebar/mirror-io"
 import { buildViewNodes } from "../../features/tui-sidebar/render-view"
+import { sidebarPalette } from "../../features/tui-sidebar/theme"
 import { resolveRoster } from "../../features/tui-sidebar/roster-resolver"
 import type { SidebarView } from "../../features/tui-sidebar/state-types"
 import { log } from "../../shared/logger"
@@ -93,7 +94,7 @@ export async function registerSidebarSlot(
       if (view === null) {
         return materializeNodes([])
       }
-      return materializeNodes(buildViewNodes(view, ctx.theme))
+      return materializeNodes(buildViewNodes(view, sidebarPalette(ctx.theme)))
     },
   })
 

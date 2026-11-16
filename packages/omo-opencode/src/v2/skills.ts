@@ -40,6 +40,7 @@ export type SkillInfo = Parameters<SkillEditor["add"]>[0]
 export type SkillFrontmatter = {
   readonly name?: string
   readonly description?: string
+  readonly use_when?: string
 }
 
 function unquoteScalar(value: string): string {
@@ -52,11 +53,37 @@ function unquoteScalar(value: string): string {
   return value
 }
 
+type ScalarField = {
+  readonly value: string
+  /** Index of the last line consumed (block scalars span multiple lines). */
+  readonly consumedThrough: number
+}
+
+/**
+ * Parse a scalar frontmatter field starting at `startIndex`, supporting plain,
+ * quoted, and block (`>`, `>-`, `|`, `|-`) values.
+ */
+function parseScalarField(lines: readonly string[], startIndex: number, key: string): ScalarField {
+  const line = lines[startIndex]
+  const rest = line.slice(key.length + 1).trim()
+  if (rest === ">-" || rest === ">" || rest === "|-" || rest === "|") {
+    const block: string[] = []
+    let j = startIndex + 1
+    while (j < lines.length && (lines[j].startsWith("  ") || lines[j] === "")) {
+      if (lines[j] !== "") block.push(lines[j].trim())
+      j += 1
+    }
+    return { value: block.join(rest.startsWith("|") ? "\n" : " "), consumedThrough: j - 1 }
+  }
+  return { value: unquoteScalar(rest), consumedThrough: startIndex }
+}
+
 /**
  * Parse the leading `---` frontmatter block of a SKILL.md. Handles:
  *   - `name: value` (plain scalar)
  *   - `description: value` (plain or quoted scalar)
  *   - `description: >-` / `>` / `|-` / `|` (block scalar, indented continuation)
+ *   - `use_when: value` (same scalar forms) — a mandatory activation condition
  */
 export function parseSkillFrontmatter(content: string): SkillFrontmatter {
   const lines = content.split(/\r?\n/)
@@ -68,29 +95,43 @@ export function parseSkillFrontmatter(content: string): SkillFrontmatter {
   const fmLines = lines.slice(1, endIndex)
   let name: string | undefined
   let description: string | undefined
+  let useWhen: string | undefined
 
   for (let i = 0; i < fmLines.length; i += 1) {
     const line = fmLines[i]
     if (line.startsWith("name:")) {
-      name = unquoteScalar(line.slice("name:".length).trim())
+      const parsed = parseScalarField(fmLines, i, "name")
+      name = parsed.value
+      i = parsed.consumedThrough
     } else if (line.startsWith("description:")) {
-      const rest = line.slice("description:".length).trim()
-      if (rest === ">-" || rest === ">" || rest === "|-" || rest === "|") {
-        const block: string[] = []
-        let j = i + 1
-        while (j < fmLines.length && (fmLines[j].startsWith("  ") || fmLines[j] === "")) {
-          if (fmLines[j] !== "") block.push(fmLines[j].trim())
-          j += 1
-        }
-        i = j - 1
-        description = block.join(rest.startsWith("|") ? "\n" : " ")
-      } else {
-        description = unquoteScalar(rest)
-      }
+      const parsed = parseScalarField(fmLines, i, "description")
+      description = parsed.value
+      i = parsed.consumedThrough
+    } else if (line.startsWith("use_when:")) {
+      const parsed = parseScalarField(fmLines, i, "use_when")
+      useWhen = parsed.value
+      i = parsed.consumedThrough
     }
   }
 
-  return { name, description }
+  return {
+    ...(name !== undefined ? { name } : {}),
+    ...(description !== undefined ? { description } : {}),
+    ...(useWhen !== undefined ? { use_when: useWhen } : {}),
+  }
+}
+
+/**
+ * Render the catalog description a model sees for a skill. A `use_when`
+ * condition is promoted to the front because the description is the only
+ * signal the model gets before deciding whether to load the skill.
+ */
+export function renderSkillDescription(description?: string, useWhen?: string): string | undefined {
+  const base = description?.trim()
+  const condition = useWhen?.trim()
+  if (condition === undefined || condition === "") return base === undefined || base === "" ? undefined : base
+  if (base === undefined || base === "") return `MANDATORY — call this skill when: ${condition}`
+  return `MANDATORY — call this skill when: ${condition} ${base}`
 }
 
 // ---------------------------------------------------------------------------
@@ -155,12 +196,18 @@ export function scanSkillDirectory(dir: string): { readonly infos: SkillInfo[]; 
       continue
     }
 
-    const { name, description } = parseSkillFrontmatter(content)
+    const { name, description, use_when } = parseSkillFrontmatter(content)
     const id = name ?? entry
     const effectiveName = name ?? entry
+    const renderedDescription = renderSkillDescription(description, use_when)
 
-    infos.push(toSkillInfo({ id, name: effectiveName, description, path: skillDir, content }))
-    scanned.push({ id, name: effectiveName, ...(description !== undefined ? { description } : {}), path: skillDir })
+    infos.push(toSkillInfo({ id, name: effectiveName, description: renderedDescription, path: skillDir, content }))
+    scanned.push({
+      id,
+      name: effectiveName,
+      ...(renderedDescription !== undefined ? { description: renderedDescription } : {}),
+      path: skillDir,
+    })
   }
 
   return { infos, scanned }
