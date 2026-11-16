@@ -2,7 +2,7 @@ import type { Plugin } from "@opencode/plugin/tui"
 
 import { validatePluginConfig } from "../../config/validate"
 import { computeView, viewKey } from "../../features/tui-sidebar/compute-view"
-import { POLL_INTERVAL_MS } from "../../features/tui-sidebar/constants"
+import { STALE_MS } from "../../features/tui-sidebar/constants"
 import {
   deriveAgents,
   deriveConfig,
@@ -10,135 +10,135 @@ import {
   deriveLoop,
   deriveRoster,
 } from "../../features/tui-sidebar/derivers"
-import { readMirror } from "../../features/tui-sidebar/mirror-io"
+import { canonicalProjectDir } from "../../features/tui-sidebar/mirror-path"
 import { buildViewNodes } from "../../features/tui-sidebar/render-view"
-import { sidebarPalette } from "../../features/tui-sidebar/theme"
 import { resolveRoster } from "../../features/tui-sidebar/roster-resolver"
+import { parseSnapshot, type TuiRuntimeSnapshot } from "../../features/tui-sidebar/snapshot-schema"
 import type { SidebarView } from "../../features/tui-sidebar/state-types"
+import { sidebarPalette } from "../../features/tui-sidebar/theme"
 import { log } from "../../shared/logger"
+import { SIDEBAR_EVENT, SIDEBAR_METHOD, sidebarRpcDefinition } from "../tui-sidebar/definition"
 import { materializeNodes } from "./render"
 
 /**
- * [OMC] v2 TUI sidebar slot (task 15).
+ * [OMC] v2 TUI sidebar slot.
  *
- * Ports the sidebar half of the V1 `tui.ts` module:
+ * Ports the V1 sidebar to the V2 slot model. The domain pipeline
+ * (validate config -> roster -> `computeView` -> `buildViewNodes`) is unchanged;
+ * what changed is where the live state comes from:
  *
- *   V1 `api.slots.register({ order: 900, slots: { sidebar_content } })`
- *   →  V2 `ctx.ui.slot({ append: "sidebar.content", render })`.
+ *   V1: poll a JSON mirror every 1 s (closure + `requestRender()`).
+ *   V2: the server plugin pushes a snapshot over the `omo-sidebar` RPC event;
+ *       this side keeps it in a Solid signal, so the mounted claim re-renders
+ *       on arrival. On mount it also asks for the current snapshot, so a window
+ *       that opens between heartbeats is never blank.
  *
- * The domain pipeline (validate config → read mirror → resolve roster →
- * `computeView` → `buildViewNodes`) is reused verbatim from
- * `features/tui-sidebar/*` (pure domain, importing nothing from the legacy
- * plugin surface). Only the host-facing shell changed:
- *
- *   - V1 imperative `api.renderer.requestRender()` on view-key change
- *     → V2 reactive `ctx.storage.memory` store. The slot `render` reads the
- *       store, so mutating it re-renders the claim reactively (Solid) without
- *       a manual render call.
- *   - V1 `api.state.path.directory` → V2 `ctx.location?.directory`.
+ * A local freshness timer drops a snapshot older than {@link STALE_MS}, which
+ * preserves the V1 semantics when the server stops pushing.
  */
 
 type SidebarState = {
   key: string
-  view: SidebarView | null
+  view: SidebarView
 }
 
-function readSidebarView(directory: string): SidebarView {
+function viewFrom(directory: string, snapshot: TuiRuntimeSnapshot | null): SidebarView {
   const validation = validatePluginConfig(directory)
-  const mirror = readMirror(directory)
   const roster = resolveRoster(directory)
   return computeView({
     config: deriveConfig({ valid: validation.valid, messages: validation.messages }),
     roster: deriveRoster(roster),
-    agents: deriveAgents(mirror),
-    jobs: deriveJobBoard(mirror),
-    loop: deriveLoop(mirror),
+    agents: deriveAgents(snapshot),
+    jobs: deriveJobBoard(snapshot),
+    loop: deriveLoop(snapshot),
   })
 }
 
+function incoming(payload: unknown, directory: string): TuiRuntimeSnapshot | null {
+  const snapshot = parseSnapshot(payload)
+  if (snapshot === null) {
+    return null
+  }
+  if (canonicalProjectDir(snapshot.projectDir) !== canonicalProjectDir(directory)) {
+    return null
+  }
+  return snapshot
+}
+
 /**
- * Registers the `sidebar.content` slot and starts the mirror-file poll loop.
- * Returns a cleanup function that clears the timer and unregisters the slot.
+ * Registers the `sidebar.content` slot. Returns a cleanup function.
  */
-export async function registerSidebarSlot(
-  ctx: Plugin.Context,
-): Promise<() => void> {
+export async function registerSidebarSlot(ctx: Plugin.Context): Promise<() => void> {
   const directory = ctx.location?.directory
   if (directory === undefined) {
-    // V1 `api.state.path.directory` was always present; V2 `ctx.location`
-    // is optional. Without a project directory the mirror-file path cannot be
-    // resolved, so the sidebar is skipped (honest gap — documented in report).
     log("[tui-sidebar] no project directory; sidebar slot not registered")
     return () => undefined
   }
 
-  const validation = validatePluginConfig(directory)
-  if (validation.config.tui?.sidebar?.enabled === false) {
+  if (validatePluginConfig(directory).config.tui?.sidebar?.enabled === false) {
     log("[tui-sidebar] sidebar disabled by config")
     return () => undefined
   }
 
-  const [state, mutate] = ctx.storage.memory<SidebarState>(
-    "omo-sidebar-view",
-    { initial: { key: "", view: null } },
-  )
-
-  let disposed = false
-  let inFlight = false
-  let timer: ReturnType<typeof setTimeout> | null = null
-
-  const unregisterSlot = ctx.ui.slot({
-    append: "sidebar.content",
-    render: () => {
-      const view = state.view
-      if (view === null) {
-        return materializeNodes([])
-      }
-      return materializeNodes(buildViewNodes(view, sidebarPalette(ctx.theme)))
-    },
+  const initialView = viewFrom(directory, null)
+  // The host's store IS the reactive core of the claim: reading `state.view`
+  // inside the render tracks, and a mutation re-renders the mounted slot.
+  const [state, mutate] = ctx.storage.memory<SidebarState>("omo-sidebar-view", {
+    initial: { key: viewKey(initialView), view: initialView },
   })
 
-  const applyView = (view: SidebarView): void => {
-    const nextKey = viewKey(view)
-    if (state.key === nextKey) return
+  let lastSnapshotAt = 0
+
+  const apply = (snapshot: TuiRuntimeSnapshot | null): void => {
+    const next = viewFrom(directory, snapshot)
+    const nextKey = viewKey(next)
+    if (nextKey === state.key) {
+      return
+    }
     mutate((draft) => {
       draft.key = nextKey
-      draft.view = view
+      draft.view = next
     })
   }
 
-  // Initial load (before the first paint, mirroring V1's awaited readView).
-  try {
-    applyView(readSidebarView(directory))
-  } catch (error) {
-    log("[tui-sidebar] initial view load failed", { error })
-  }
-
-  const schedule = (): void => {
-    timer = setTimeout(tick, POLL_INTERVAL_MS)
-  }
-
-  const tick = async (): Promise<void> => {
-    if (disposed || inFlight) {
-      if (!disposed) schedule()
+  const receive = (snapshot: TuiRuntimeSnapshot | null): void => {
+    if (snapshot === null) {
       return
     }
-    inFlight = true
-    try {
-      applyView(readSidebarView(directory))
-    } catch (error) {
-      log("[tui-sidebar] polling failed", { error })
-    } finally {
-      inFlight = false
-      if (!disposed) schedule()
-    }
+    lastSnapshotAt = Date.now()
+    apply(snapshot)
   }
 
-  schedule()
+  const unregisterSlot = ctx.ui.slot({
+    append: "sidebar.content",
+    render: () => materializeNodes(buildViewNodes(state.view, sidebarPalette(ctx.theme))),
+  })
+
+  const rpc = ctx.client.rpc(sidebarRpcDefinition)
+
+  const unsubscribe = rpc.events.on(SIDEBAR_EVENT, (payload) => {
+    receive(incoming(payload?.data, directory))
+  })
+
+  // Snapshot on attach: a window opened between heartbeats starts populated.
+  void rpc[SIDEBAR_METHOD]({})
+    .then((payload) => {
+      receive(incoming(payload, directory))
+    })
+    .catch(() => undefined)
+
+  // Freshness guard: no push for a while means the state is no longer live.
+  const staleTimer = setInterval(() => {
+    if (lastSnapshotAt === 0 || Date.now() - lastSnapshotAt <= STALE_MS) {
+      return
+    }
+    lastSnapshotAt = 0
+    apply(null)
+  }, STALE_MS)
 
   return () => {
-    disposed = true
-    if (timer !== null) clearTimeout(timer)
+    clearInterval(staleTimer)
+    unsubscribe()
     unregisterSlot()
   }
 }
