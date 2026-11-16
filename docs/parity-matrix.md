@@ -14,9 +14,9 @@
 - **PASS** — dibuktikan runtime di harness (perintah + output tersimpan).
 - **PASS\*** — runtime terbukti pada jalur yang tersedia; bagian model-backed dibatasi harness
   (API key dimask) dan dicatat jujur sebagai limitasi, bukan dikecualikan.
-- **PARTIAL** — one half is proven on its stated surface, the other half is explicitly deferred
+- **PARTIAL**: one half is proven on its stated surface, the other half is explicitly deferred
   and the deferral is named in the Evidence column. Never a synonym for PASS.
-- **DEFERRED** — not ported at all; the Evidence column names the follow-up plan (planned).
+- **DEFERRED**: not ported at all; the Evidence column names the follow-up plan (planned).
 - Metode RPC: `opencode api --server <url> rpc.call --param rpcID=<id> --param method=<m> -d '{"input":{…}}'`
 
 ## Matrix

@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test"
 import { registerAgents } from "./agents"
-import { ALLOWED_OPTION_KEYS } from "./agents/doctrine-hook"
 import { FAMILY_OVERLAYS } from "./agents/family-overlays"
 import { SISYPHUS_DOCTRINE_BASE } from "./agents/sisyphus-doctrine"
+
+const EXPECTED_OPTION_KEYS = ["maxTokens", "temperature", "topP", "topK"]
 
 type AgentRecord = {
   id: string
@@ -104,7 +105,7 @@ describe("registerAgents doctrine wiring", () => {
     expect(doctrineParts).toHaveLength(1)
     expect(doctrineParts[0]?.text).toBe(`${SISYPHUS_DOCTRINE_BASE}\n\n${FAMILY_OVERLAYS["claude-opus-4-8"]}`)
     for (const key of Object.keys(input.options)) {
-      expect(ALLOWED_OPTION_KEYS).toContain(key as (typeof ALLOWED_OPTION_KEYS)[number])
+      expect(EXPECTED_OPTION_KEYS).toContain(key)
     }
   })
 
