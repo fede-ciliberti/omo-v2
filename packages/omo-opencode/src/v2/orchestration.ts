@@ -163,6 +163,14 @@ function findTaskBySessionId(sessionId: string): BackgroundTask | undefined {
   return undefined
 }
 
+/**
+ * Every task currently in the active registry, regardless of parent session.
+ * The TUI sidebar renders the whole job board, not one session's descendants.
+ */
+function listActiveBackgroundTasks(): BackgroundTask[] {
+  return [...getRegistry().active.values()]
+}
+
 function listDescendantTasks(parentSessionId: string): BackgroundTask[] {
   const registry = getRegistry()
   return [...registry.active.values()].filter((task) => task.parentSessionId === parentSessionId)
@@ -871,6 +879,7 @@ export {
   isBackgroundTaskId,
   isSessionId,
   launchBackgroundTask,
+  listActiveBackgroundTasks,
   listDescendantTasks,
   newTaskId,
   readTodos,

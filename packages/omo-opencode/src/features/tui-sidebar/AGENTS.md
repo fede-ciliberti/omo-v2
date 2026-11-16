@@ -41,15 +41,24 @@ TUI side:     1s poll → readMirror() → derivers → computeView() → viewKe
 - Reader: `tui.ts` polls every 1s, re-renders only when `viewKey` changes, falls back to idle roster view (from local config) when the mirror is missing or stale.
 - View selection: active if any of agents/jobs/loop is live; broken if config invalid and nothing active; idle otherwise.
 
-## V2 GAP — the writer half is not ported
+## V2 WIRING — the producer lives under `src/v2/tui-sidebar/`
 
-`TuiStateMirror`, `snapshot-builder`, `loop-reader` and `config-validator` were removed with
-the V1 line (task 18). In V2 only the reader half exists: `writeMirror` has no caller, so
-`readMirror` always returns `null` and the view is always `idle` (the config-derived model
-roster). The sidebar therefore shows agent/job/ULW data only after the producer is
-reintroduced. The chosen channel is an RPC event pushed by the server plugin and consumed
-with `ctx.data.listen` plus a Solid signal (measured 11-12 ms, cross-process); `ctx.storage`
-is NOT shared between the two processes and must not be used as the channel.
+The V1 writer half (`TuiStateMirror`, `snapshot-builder`, `loop-reader`, `config-validator`)
+was removed with the V1 line (task 18), so `writeMirror` still has no caller and the file
+mirror path is dead in V2. The replacement keeps the same snapshot shape but pushes it over
+an RPC event instead of a file:
+
+| Module | Role |
+| --- | --- |
+| `src/v2/tui-sidebar/producer.ts` | Pure derivation: registry tasks + executing sessions -> `TuiRuntimeSnapshot` (same v1 shape). Redacts and bounds task titles; `toolCalls`/`lastTool` are `null` because the V2 registry does not track them |
+| `src/v2/tui-sidebar/definition.ts` | The `omo-sidebar` RPC contract shared by both processes |
+| `src/v2/tui-sidebar/channel.ts` | Server side: rebuilds on a 2 s heartbeat and on debounced session/execution events, then emits `rpc.omo-sidebar.sidebar-snapshot` |
+| `src/v2/tui/sidebar.ts` | TUI side: subscribes to that event, asks for the current snapshot on mount, keeps it in `ctx.storage.memory` (reactive) and drops it after `STALE_MS` without a push |
+
+`ctx.storage` is NOT shared between the server and TUI processes (measured), so it must never
+be used as the cross-process channel. RPC events measured 11-12 ms cross-process.
+
+The ULW/loop section still has no V2 source: the snapshot carries `loop: null` until Fase 3.
 
 ## CONVENTIONS
 
