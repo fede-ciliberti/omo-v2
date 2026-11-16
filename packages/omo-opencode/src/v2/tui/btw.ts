@@ -2,6 +2,7 @@ import type { Plugin } from "@opencode/plugin/tui"
 import { jsx } from "@opentui/solid/jsx-runtime"
 
 import { log } from "../../shared/logger"
+import { sidebarPalette } from "../../features/tui-sidebar/theme"
 import { parseBtwQuestion } from "../../features/btw-side/btw-command-draft"
 import { getBtwSideMetadata, type BtwSideMetadata } from "../../features/btw-side/metadata"
 import { createBtwAdoptionCache } from "../../features/btw-side/tui-adoption-cache"
@@ -391,7 +392,7 @@ export async function registerBtwSideTui(ctx: Plugin.Context): Promise<() => voi
       const sessionID = input.sessionID ?? currentTuiSessionID(ctx)
       const label = footerLabel(sessionID, btwUi.state, btwUi.reattaching)
       if (label === undefined) return null
-      return jsx("text", { fg: ctx.theme.textMuted, children: label })
+      return jsx("text", { fg: sidebarPalette(ctx.theme).textMuted, children: label })
     },
   })
 
