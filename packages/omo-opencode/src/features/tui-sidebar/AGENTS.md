@@ -60,16 +60,40 @@ be used as the cross-process channel. RPC events measured 11-12 ms cross-process
 
 The ULW/loop section still has no V2 source: the snapshot carries `loop: null` until Fase 3.
 
+## SOURCES OF TRUTH (V2): which file decides what
+
+The sidebar renders two different truths side by side, and they come from different places.
+Knowing which is which is the difference between "the config changed" and "the runtime changed".
+
+| Panel | Source | Process |
+|---|---|---|
+| **Models** | the omo config chain (`~/.omo/omo.jsonc` + walked project `.omo/omo.jsonc`) through `validatePluginConfig` -> `resolveRoster` -> the doctor's model resolution | TUI only. Recomputed on every snapshot (~2 s heartbeat), so a config edit shows up without a restart |
+| **Config** | the same `validatePluginConfig` messages | TUI only |
+| **Agents** | the server snapshot: the `running` map fed by `session.execution.*` events, scoped to the plugin's project directory | server |
+| **Jobs** | the server snapshot: `listActiveBackgroundTasks()` | server |
+
+**Runtime models do not come from that file.** The V2 server plugin never reads the omo config
+chain (`loadOmoOpenCodeConfigChain` appears 0 times in `dist/index.js`, twice in
+`dist/tui-entry.js`). Per-agent models come from `~/.config/opencode/opencode.json`:
+`agents.<id>.model` for a specific agent, and the top-level `model` / `small_model` as the
+defaults. Consequences worth remembering:
+
+- the Models panel shows the omo file's *intent*; it can disagree with the model a session
+  actually runs, and nothing in the panel flags the disagreement;
+- editing `omo.jsonc` changes the panel within one heartbeat and changes nothing at runtime;
+- the **Jobs** board is not the subagent board: the registry only holds `background_task`
+  launches, while `subagent` children appear under **Agents** as executing sessions.
+
 ## CONVENTIONS
 
 - Every state is a `kind`-tagged union; exhaustive switches end in `assertNever`.
 - Failure means degrade, never throw: bad JSON, missing files, stale data all collapse to `null` / `{ kind: "none" }`. Only non-Error throws are rethrown.
-- All writes go through `writeFileAtomically`; readers validate version, project dir, and freshness before trusting the file.
+- All writes go through `writeFileAtomically`; readers validate version, project dir, and freshness before trusting the file. **V1 mirror path only**: V2 writes no mirror, see SOURCES OF TRUTH below.
 - Privacy: goal titles are redacted to `null` before writing; render side shows "private".
 
 ## ANTI-PATTERNS
 
-- Don't share memory between plugin and TUI sides; the mirror file is the only channel.
+- Don't share memory between plugin and TUI sides; the `omo-sidebar` RPC event is the only channel. The V1 mirror file is dead in V2.
 - Don't change snapshot shape without bumping `MIRROR_SCHEMA_VERSION`; old readers silently drop the file otherwise.
-- Don't write the mirror directly; go through `TuiStateMirror.flush()` so debounce and in-flight dedup hold.
+- Don't write the mirror directly (V1 legacy); go through `TuiStateMirror.flush()` so debounce and in-flight dedup hold.
 - Don't add new timing values inline; all knobs live in `constants.ts`.

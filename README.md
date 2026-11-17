@@ -22,14 +22,14 @@ fork's git history.
 | Plugin server entry (`Plugin.define` + RPC `omo.*`) | Ported, runtime-verified |
 | Tools (glob/grep) + hooks | Ported, runtime-verified |
 | Client migration (`@opencode-ai/sdk` → `@opencode/client`) | Ported, runtime-verified |
-| Agents (11 OMC agents incl. Prometheus + subagent dispatch) | Ported, runtime-verified |
+| Agents (11 OMC agents incl. Prometheus + subagent dispatch, canonical Sisyphus orchestration doctrine and per-model-family overlays) | Ported, runtime-verified |
 | Orchestration (background tasks, continuation, todos) | Ported, runtime-verified |
 | MCP injection + skills resolution + config migration | Ported, runtime-verified |
 | Builtin slash commands (goal, refactor, ulw-execute, start-work, stop-continuation, remove-ai-slops, handoff, hyperplan) | Restored as V2 Markdown commands (`.agents/command/`) |
 | Boulder continuation (auto-resume open work plans) | New V2 module [`src/v2/boulder-continuation/`](./packages/omo-opencode/src/v2/boulder-continuation/AGENTS.md): triggers on `session.execution.succeeded`, injects a directive via `session.synthetic` (steer), loop guards; runtime-verified, **default off** |
 | TUI binding layer (sidebar, btw-side, native nudge) | Ported (real-terminal render = post-cutover observation item) |
 | Static gates (zero `@opencode-ai/*`, strict TS, pinned deps) | Green |
-| Runtime parity matrix | 19 PASS + 5 PASS* (documented limitations) — [docs/parity-matrix.md](./docs/parity-matrix.md) |
+| Runtime parity matrix | Rows for wiring/features (1-25) and for agent-doctrine fidelity (26-31), each with its evidence and its documented limitation. Current counts live in [docs/parity-matrix.md](./docs/parity-matrix.md), not here |
 
 See [docs/parity-matrix.md](./docs/parity-matrix.md) for the full per-feature matrix with evidence.
 
@@ -43,10 +43,10 @@ The port lives in `packages/omo-opencode/src/v2/`:
 | `tui-entry.ts` | TUI half (`id: "oh-my-openagent:tui"`) — resolved via package exports `./tui` (Host Entrypoints) |
 | `tools.ts` | `glob` / `grep` tools (native reimplementation) + 4 hooks (`ctx.tool/session/shell.hook`) + `omo.tools` RPC |
 | `client.ts` / `client-events.ts` | `OpenCode.make` / `Service.discover-ensure-stop` + V1→V2 event-name mapping |
-| `agents.ts` | 10 OMC agent definitions (`system` field, `mode`, permissions) + `omo.agents` RPC (list/get/dispatch) |
+| `agents.ts` + `agents/` | 11 OMC agent definitions (`system`, `mode`, permissions) + `omo.agents` RPC (list/get/dispatch). `agents/` holds the canonical Sisyphus doctrine (`sisyphus-doctrine.ts`), the model-family resolver (`model-family.ts`), the per-family overlays (`family-overlays.ts`) and the request-shaping wiring (`doctrine-hook.ts`, registered as a `session.hook("context")`) |
 | `orchestration.ts` | Background task manager (spawn/collect/cancel) + todo continuation + `omo.orch` RPC |
 | `boulder-continuation/` | Work-plan auto-continuation: `succeeded` → reconcile → lookup → checklist → guards → `session.synthetic`; counters in `ctx.storage`; `omo.continuation` RPC. See [its AGENTS.md](./packages/omo-opencode/src/v2/boulder-continuation/AGENTS.md) |
-| `mcp.ts` / `skills.ts` | MCP server injection (`ctx.mcp.transform`) + skills-location fallback + `omo.mcp` / `omo.skill` RPC |
+| `mcp.ts` / `skills.ts` | MCP server injection (`ctx.mcp.transform`) + skills-location fallback + `omo.mcp` / `omo.skill` RPC. The `lsp` server resolves the daemon from the repo (workspace or published layout) and passes CLI+version through `environment`, so it needs no environment variable |
 | `config-migration.ts` | Config/installer migration dry-run (V1 `tui.json` → V2 `cli.json` field mapping) |
 | `tui/` | TUI binding layer: `btw.ts`, `sidebar.ts` (slot `sidebar.content`), `session.ts`, `render.ts`, `native-nudge.ts` |
 
