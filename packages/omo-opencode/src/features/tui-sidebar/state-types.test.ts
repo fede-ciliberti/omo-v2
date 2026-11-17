@@ -7,7 +7,6 @@ import type {
   ConfigState,
   JobBoardState,
   LoopState,
-  RosterState,
   SidebarView,
 } from "./state-types"
 
@@ -17,17 +16,6 @@ function describeConfigState(state: ConfigState): string {
       return "valid"
     case "invalid":
       return state.messages.join("\n")
-    default:
-      return assertNever(state)
-  }
-}
-
-function describeRosterState(state: RosterState): string {
-  switch (state.kind) {
-    case "empty":
-      return "empty"
-    case "rows":
-      return state.rows.map((row) => `${row.label}:${row.model}`).join(",")
     default:
       return assertNever(state)
   }
@@ -89,7 +77,7 @@ function describeSidebarView(view: SidebarView): string {
     case "broken":
       return view.messages.join("\n")
     case "idle":
-      return describeRosterState(view.roster)
+      return "idle"
     default:
       return assertNever(view)
   }
@@ -131,10 +119,7 @@ describe("tui sidebar state types", () => {
       kind: "broken",
       messages: ["config invalid"],
     }
-    const idle: SidebarView = {
-      kind: "idle",
-      roster: { kind: "rows", rows: [{ label: "sisyphus", model: "gpt-5" }] },
-    }
+    const idle: SidebarView = { kind: "idle" }
 
     // when
     const descriptions = [active, broken, idle].map(describeSidebarView)
@@ -143,7 +128,7 @@ describe("tui sidebar state types", () => {
     expect(descriptions).toEqual([
       "1/2|sisyphus:busy|Summarize:completed|invalid",
       "config invalid",
-      "sisyphus:gpt-5",
+      "idle",
     ])
     expect(describeConfigState({ kind: "valid" })).toBe("valid")
     expect(describeConfigState({ kind: "invalid", messages: ["bad"] })).toBe("bad")

@@ -18,7 +18,6 @@ const theme = {
 
 const activeSections: ComputeViewSections = {
   config: { kind: "invalid", messages: ["agents.sisyphus.model: expected string"] },
-  roster: { kind: "empty" },
   agents: { kind: "list", agents: [{ name: "fixer", status: "busy" }] },
   jobs: { kind: "list", jobs: [{ title: "explore repo", status: "running", toolCalls: 3, lastTool: "grep" }] },
   loop: {
@@ -73,8 +72,7 @@ describe("tui sidebar renderView", () => {
     // given
     const view = computeView({
       config: { kind: "invalid", messages: ["agents.sisyphus.model: expected string"] },
-      roster: { kind: "empty" },
-      agents: { kind: "none" },
+          agents: { kind: "none" },
       jobs: { kind: "none" },
       loop: { kind: "none" },
     })
@@ -89,20 +87,17 @@ describe("tui sidebar renderView", () => {
     expect(description).toContain("agents.sisyphus.model")
   })
 
-  it("#given idle roster #when rendering #then it lists configured model rows", () => {
+  it("#given an idle view #when rendering #then it reports no active sessions and no model rows", () => {
     // given
-    const view: SidebarView = {
-      kind: "idle",
-      roster: { kind: "rows", rows: [{ label: "sisyphus", model: "gpt-5.5" }] },
-    }
+    const view: SidebarView = { kind: "idle" }
 
     // when
     const description = describeView(view)
     const nodes = buildViewNodes(view, theme)
 
     // then
-    expect(description).toContain("sisyphus")
-    expect(description).toContain("gpt-5.5")
-    expect(nodes[0]?.kind).toBe("box")
+    expect(description).toBe("no active sessions")
+    expect(description).not.toContain("Models")
+    expect(nodes[0]?.kind).toBe("text")
   })
 })

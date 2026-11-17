@@ -5,11 +5,10 @@ import {
   deriveConfig,
   deriveJobBoard,
   deriveLoop,
-  deriveRoster,
 } from "./derivers"
 import { MAX_AGENTS, MAX_JOBS, MIRROR_SCHEMA_VERSION } from "./constants"
 import type { TuiRuntimeSnapshot } from "./snapshot-schema"
-import type { AgentRow, JobRow, LoopLive, RosterRow } from "./state-types"
+import type { AgentRow, JobRow, LoopLive } from "./state-types"
 
 const liveLoop: LoopLive = {
   kind: "live",
@@ -35,16 +34,6 @@ function snapshot(input: {
     jobBoard: [...(input.jobBoard ?? [])],
     loop: input.loop ?? null,
   }
-}
-
-function descendingRosterRows(count: number): readonly RosterRow[] {
-  return Array.from({ length: count }, (_, index) => {
-    const ordinal = count - index - 1
-    return {
-      label: `Agent ${String(ordinal).padStart(2, "0")}`,
-      model: `model-${ordinal}`,
-    }
-  })
 }
 
 function descendingAgentRows(count: number): readonly AgentRow[] {
@@ -91,34 +80,6 @@ describe("tui sidebar section derivers", () => {
 
     // then
     expect(state).toEqual({ kind: "invalid", messages: ["bad enum", "bad model"] })
-  })
-
-  it("#given no roster rows #when deriving roster #then it returns empty", () => {
-    // given
-    const rows: readonly RosterRow[] = []
-
-    // when
-    const state = deriveRoster(rows)
-
-    // then
-    expect(state).toEqual({ kind: "empty" })
-  })
-
-  it("#given unsorted oversized roster rows #when deriving roster #then it sorts by label and caps rows", () => {
-    // given
-    const rows = descendingRosterRows(MAX_AGENTS + 2)
-
-    // when
-    const state = deriveRoster(rows)
-
-    // then
-    expect(state.kind).toBe("rows")
-    if (state.kind === "rows") {
-      expect(state.rows).toHaveLength(MAX_AGENTS)
-      expect(state.rows.map((row) => row.label)).toEqual(
-        Array.from({ length: MAX_AGENTS }, (_, index) => `Agent ${String(index).padStart(2, "0")}`),
-      )
-    }
   })
 
   it("#given no runtime snapshot or no active agents #when deriving agents #then it returns none", () => {

@@ -6,7 +6,6 @@ import type {
   ConfigState,
   JobBoardState,
   LoopState,
-  RosterState,
   SidebarView,
 } from "./state-types"
 
@@ -14,10 +13,6 @@ const validConfig: ConfigState = { kind: "valid" }
 const invalidConfig: ConfigState = {
   kind: "invalid",
   messages: ["bad agent model", "unknown sidebar flag"],
-}
-const roster: RosterState = {
-  kind: "rows",
-  rows: [{ label: "sisyphus", model: "openai/gpt-5.5" }],
 }
 const idleAgents: AgentsState = { kind: "none" }
 const idleJobs: JobBoardState = { kind: "none" }
@@ -42,11 +37,10 @@ const liveLoop: LoopState = {
 }
 
 describe("tui sidebar computeView", () => {
-  it("#given inactive sections and valid config #when computing view #then it returns idle with roster and no banner", () => {
+  it("#given inactive sections and valid config #when computing view #then it returns idle with no banner", () => {
     // given
     const sections = {
       config: validConfig,
-      roster,
       agents: idleAgents,
       jobs: idleJobs,
       loop: idleLoop,
@@ -56,7 +50,7 @@ describe("tui sidebar computeView", () => {
     const view = computeView(sections)
 
     // then
-    expect(view).toEqual({ kind: "idle", roster })
+    expect(view).toEqual({ kind: "idle" })
     expect("configBanner" in view).toBe(false)
   })
 
@@ -64,7 +58,6 @@ describe("tui sidebar computeView", () => {
     // given
     const sections = {
       config: invalidConfig,
-      roster,
       agents: idleAgents,
       jobs: idleJobs,
       loop: idleLoop,
@@ -81,7 +74,6 @@ describe("tui sidebar computeView", () => {
     // given
     const sections = {
       config: validConfig,
-      roster,
       agents: activeAgents,
       jobs: idleJobs,
       loop: idleLoop,
@@ -104,7 +96,6 @@ describe("tui sidebar computeView", () => {
     // given
     const sections = {
       config: invalidConfig,
-      roster,
       agents: idleAgents,
       jobs: activeJobs,
       loop: idleLoop,
@@ -127,7 +118,6 @@ describe("tui sidebar computeView", () => {
     // given
     const sections = {
       config: validConfig,
-      roster,
       agents: idleAgents,
       jobs: idleJobs,
       loop: liveLoop,
@@ -183,12 +173,21 @@ describe("tui sidebar computeView", () => {
     expect(secondKey).toBe(firstKey)
   })
 
-  it("#given a changed view value #when computing keys #then viewKey changes", () => {
+  it("#given active views that differ in one agent status #when computing keys #then viewKey changes", () => {
     // given
-    const original: SidebarView = { kind: "idle", roster }
+    const original: SidebarView = {
+      kind: "active",
+      loop: idleLoop,
+      agents: activeAgents,
+      jobs: idleJobs,
+      configBanner: { kind: "none" },
+    }
     const changed: SidebarView = {
-      kind: "idle",
-      roster: { kind: "rows", rows: [{ label: "atlas", model: "openai/gpt-5.5" }] },
+      kind: "active",
+      loop: idleLoop,
+      agents: { kind: "list", agents: [{ name: "sisyphus", status: "idle" }] },
+      jobs: idleJobs,
+      configBanner: { kind: "none" },
     }
 
     // when

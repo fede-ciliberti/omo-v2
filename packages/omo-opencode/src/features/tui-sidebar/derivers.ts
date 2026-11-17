@@ -6,8 +6,6 @@ import type {
   JobBoardState,
   JobRow,
   LoopState,
-  RosterRow,
-  RosterState,
 } from "./state-types"
 import type { BackgroundTaskStatus } from "../background-agent/types"
 
@@ -29,17 +27,6 @@ export function deriveConfig(v: {
   }
 
   return { kind: "invalid", messages: [...v.messages] }
-}
-
-export function deriveRoster(rows: readonly RosterRow[]): RosterState {
-  if (rows.length === 0) {
-    return { kind: "empty" }
-  }
-
-  return {
-    kind: "rows",
-    rows: [...rows].sort(compareRosterRows).slice(0, MAX_AGENTS),
-  }
 }
 
 export function deriveAgents(snap: TuiRuntimeSnapshot | null): AgentsState {
@@ -66,10 +53,6 @@ export function deriveJobBoard(snap: TuiRuntimeSnapshot | null): JobBoardState {
 
 export function deriveLoop(snap: TuiRuntimeSnapshot | null): LoopState {
   return snap?.loop ?? { kind: "none" }
-}
-
-function compareRosterRows(left: RosterRow, right: RosterRow): number {
-  return left.label.localeCompare(right.label)
 }
 
 function compareJobs(left: JobRow, right: JobRow): number {
