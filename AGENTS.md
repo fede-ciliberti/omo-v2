@@ -64,6 +64,7 @@ Unless the user EXPLICITLY says otherwise, or the task is an urgent must-fix-now
 - **QA is the evidence gate, scoped to what you touched.** A change under `packages/omo-opencode/` MUST run the **`opencode-qa`** skill; a change under `packages/omo-codex/` (lazycodex) MUST run the **`codex-qa`** skill; a change under `packages/omo-senpi/` or `packages/senpi-task/` MUST run the **`senpi-qa`** skill (see the QA section above for each). Run the matching skill, and treat its captured output (written under the gitignored `.omo/evidence/`, summarized in the PR body, never committed) as the QA evidence `work-with-pr` requires. A change touching more than one runs each.
 - **Conflicts → `smart-rebase`.** If the worktree branch conflicts with its base, resolve it with the **`smart-rebase`** skill, then re-run the scoped QA. Never hand-resolve by force-pushing shared history.
 - **Merge → merge commit, ALWAYS.** Land the PR with a merge commit per **PR MERGE POLICY** below. NEVER squash-merge or rebase-merge, even if a generic workflow, skill, or GitHub default suggests it.
+- **A plan cannot authorize what a hard repo rule forbids.** On conflict the rule wins: the acceptance criterion is reformulated and the deviation recorded. Never relax the rule to satisfy the plan.
 
 ## OVERVIEW
 
@@ -423,6 +424,7 @@ Cross-harness, one-command dev setup. The **single source of truth** is [`script
 - **NEVER use `gh pr merge --admin` or any required-check override.** Do not request or act on authorization to bypass a gate.
 - A required check that is already red on `dev` is a base-branch defect and remains a merge blocker. Inspect the latest `dev` run, reproduce the failure on the matching platform and toolchain, root-fix it in the current PR or a separate atomic PR, rebase onto the repaired `dev`, rerun every required check, and record the evidence.
 - Reducing the failure count is not a green result. Never make a gate disappear through `test.skip`, weakened assertions, retry loops, `continue-on-error`, platform or shell exclusion, or an environment-specific workaround.
+- **A gate that did not return before the merge is never reported as passed.** Say it was missing; if the verdict lands later, fix forward with a follow-up PR instead of dismissing it as late.
 
 ## NOTES
 

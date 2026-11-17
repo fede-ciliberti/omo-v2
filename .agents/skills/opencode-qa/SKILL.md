@@ -28,6 +28,16 @@ check a flag with `opencode <cmd> --help`.
   unbounded scan on purpose.
 - The opencode source repo (`packages/opencode`) tests itself with `bun test`
   and CANNOT run tests from the repo root. See `references/testing-harness.md`.
+- Plugins load **lazily per directory**: a fresh `opencode serve` answers
+  `rpc.unavailable` for every plugin RPC (`omo.*`, ...) until a session exists in
+  that directory. Create one (`session.create`) before asserting any RPC, or the
+  proof is a false negative.
+- `opencode serve` prints an ephemeral password in its own log; `opencode api`
+  against it needs `OPENCODE_PASSWORD`. Read it at runtime, never echo it, and
+  redact the line in any captured artifact.
+- The repo pins Bun 1.4.0 and the build gate needs it: host Bun 1.3.2 does not
+  emit `--metafile=<path>`, so `bun run build` fails on the senpi-plugin node for
+  an unrelated reason. Run the gate with the pinned binary and say which one ran.
 
 ## Setup
 
