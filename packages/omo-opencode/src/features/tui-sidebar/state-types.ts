@@ -14,18 +14,9 @@ export type JobRow = {
   readonly lastTool: string | null
 }
 
-export type RosterRow = {
-  readonly label: string
-  readonly model: string
-}
-
 export type ConfigState =
   | { readonly kind: "valid" }
   | { readonly kind: "invalid"; readonly messages: readonly string[] }
-
-export type RosterState =
-  | { readonly kind: "empty" }
-  | { readonly kind: "rows"; readonly rows: readonly RosterRow[] }
 
 export type AgentsState =
   | { readonly kind: "none" }
@@ -61,7 +52,7 @@ export type SidebarView =
       readonly configBanner: ConfigBanner
     }
   | { readonly kind: "broken"; readonly messages: readonly string[] }
-  | { readonly kind: "idle"; readonly roster: RosterState }
+  | { readonly kind: "idle" }
 
 export function assertNever(value: never): never {
   throw new Error(`Unexpected variant: ${JSON.stringify(value)}`)

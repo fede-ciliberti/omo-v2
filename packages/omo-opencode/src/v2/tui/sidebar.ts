@@ -8,11 +8,9 @@ import {
   deriveConfig,
   deriveJobBoard,
   deriveLoop,
-  deriveRoster,
 } from "../../features/tui-sidebar/derivers"
 import { canonicalProjectDir } from "../../features/tui-sidebar/mirror-path"
 import { buildViewNodes } from "../../features/tui-sidebar/render-view"
-import { resolveRoster } from "../../features/tui-sidebar/roster-resolver"
 import { parseSnapshot, type TuiRuntimeSnapshot } from "../../features/tui-sidebar/snapshot-schema"
 import type { SidebarView } from "../../features/tui-sidebar/state-types"
 import { sidebarPalette } from "../../features/tui-sidebar/theme"
@@ -24,7 +22,7 @@ import { materializeNodes } from "./render"
  * [OMC] v2 TUI sidebar slot.
  *
  * Ports the V1 sidebar to the V2 slot model. The domain pipeline
- * (validate config -> roster -> `computeView` -> `buildViewNodes`) is unchanged;
+ * (validate config -> `computeView` -> `buildViewNodes`) is unchanged;
  * what changed is where the live state comes from:
  *
  *   V1: poll a JSON mirror every 1 s (closure + `requestRender()`).
@@ -44,10 +42,8 @@ type SidebarState = {
 
 function viewFrom(directory: string, snapshot: TuiRuntimeSnapshot | null): SidebarView {
   const validation = validatePluginConfig(directory)
-  const roster = resolveRoster(directory)
   return computeView({
     config: deriveConfig({ valid: validation.valid, messages: validation.messages }),
-    roster: deriveRoster(roster),
     agents: deriveAgents(snapshot),
     jobs: deriveJobBoard(snapshot),
     loop: deriveLoop(snapshot),

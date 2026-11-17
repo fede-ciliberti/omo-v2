@@ -5,13 +5,11 @@ import type {
   JobBoardState,
   LoopLive,
   LoopState,
-  RosterState,
   SidebarView,
 } from "./state-types"
 
 export type ComputeViewSections = {
   readonly config: ConfigState
-  readonly roster: RosterState
   readonly agents: AgentsState
   readonly jobs: JobBoardState
   readonly loop: LoopState
@@ -32,7 +30,7 @@ export function computeView(sections: ComputeViewSections): SidebarView {
     return { kind: "broken", messages: sections.config.messages }
   }
 
-  return { kind: "idle", roster: sections.roster }
+  return { kind: "idle" }
 }
 
 export function viewKey(view: SidebarView): string {
@@ -48,7 +46,7 @@ export function viewKey(view: SidebarView): string {
     case "broken":
       return stableKey(["broken", [...view.messages]])
     case "idle":
-      return stableKey(["idle", rosterKeyParts(view.roster)])
+      return stableKey(["idle"])
     default:
       return assertNever(view)
   }
@@ -60,17 +58,6 @@ function isActive(sections: ComputeViewSections): boolean {
 
 function stableKey(parts: readonly unknown[]): string {
   return JSON.stringify(parts)
-}
-
-function rosterKeyParts(roster: RosterState): readonly unknown[] {
-  switch (roster.kind) {
-    case "empty":
-      return ["roster", "empty"]
-    case "rows":
-      return ["roster", "rows", roster.rows.map((row) => [row.label, row.model])]
-    default:
-      return assertNever(roster)
-  }
 }
 
 function agentsKeyParts(agents: AgentsState): readonly unknown[] {

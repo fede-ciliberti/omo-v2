@@ -4,7 +4,7 @@
 
 ## OVERVIEW
 
-24 .ts files (12 impl + 12 co-located tests). Two halves connected only by a JSON mirror file on disk: the plugin process writes runtime snapshots (`TuiStateMirror`), the TUI process polls the mirror, derives section states, and renders sidebar nodes. Gated on `tui.sidebar.enabled` (on unless explicitly `false`).
+22 .ts files (11 impl + 11 co-located tests). Two halves connected only by a JSON mirror file on disk: the plugin process writes runtime snapshots (`TuiStateMirror`), the TUI process polls the mirror, derives section states, and renders sidebar nodes. Gated on `tui.sidebar.enabled` (on unless explicitly `false`).
 
 ## DATA FLOW
 
@@ -24,7 +24,6 @@ TUI side:     1s poll → readMirror() → derivers → computeView() → viewKe
 | `compute-view.ts` | `computeView` picks active/broken/idle; `viewKey` gives stable string for re-render diffing |
 | `render-view.ts` | `buildViewNodes` (themed box/text tree) + `describeView` (plain lines); 24-char label truncation |
 | `state-types.ts` | Discriminated-union section states (`kind` tags) + `assertNever` |
-| `roster-resolver.ts` | Idle-view model roster from config via doctor's model resolution |
 | `element-helpers.ts` | `ViewNode` type + `box`/`text` constructors (renderer-agnostic) |
 | `theme.ts` | `sidebarPalette` — adapts the V2 token TREE (`text.base`, `text.muted`, `text.feedback.*`, `border.base`) to the flat palette the render layer reads. Never returns `undefined`: unknown tokens degrade to fallbacks, so a host theme change cannot crash the slot |
 | `constants.ts` | All timing/size knobs: STALE_MS 6s, HEARTBEAT_MS 2s, POLL_INTERVAL_MS 1s, WRITE_DEBOUNCE_MS 250ms, LOOP_FRESH_MS 120s |
@@ -38,7 +37,7 @@ TUI side:     1s poll → readMirror() → derivers → computeView() → viewKe
 ## LIFECYCLE / WIRING
 
 - Writer: `create-managers.ts` instantiates the mirror; `onEvent()` triggers debounced flush, `start()` adds heartbeat, `stop()` clears timers and resolves pending flushes.
-- Reader: `tui.ts` polls every 1s, re-renders only when `viewKey` changes, falls back to idle roster view (from local config) when the mirror is missing or stale.
+- Reader: `tui.ts` polls every 1s, re-renders only when `viewKey` changes, falls back to the idle view when the mirror is missing or stale.
 - View selection: active if any of agents/jobs/loop is live; broken if config invalid and nothing active; idle otherwise.
 
 ## V2 WIRING — the producer lives under `src/v2/tui-sidebar/`
@@ -62,25 +61,28 @@ The ULW/loop section still has no V2 source: the snapshot carries `loop: null` u
 
 ## SOURCES OF TRUTH (V2): which file decides what
 
-The sidebar renders two different truths side by side, and they come from different places.
-Knowing which is which is the difference between "the config changed" and "the runtime changed".
+The sidebar is runtime-only since 2026-11-17: it renders what the server reports, plus one line
+when nothing is running. It does not list models.
 
-| Panel | Source | Process |
+| Section | Source | Process |
 |---|---|---|
-| **Models** | the omo config chain (`~/.omo/omo.jsonc` + walked project `.omo/omo.jsonc`) through `validatePluginConfig` -> `resolveRoster` -> the doctor's model resolution | TUI only. Recomputed on every snapshot (~2 s heartbeat), so a config edit shows up without a restart |
-| **Config** | the same `validatePluginConfig` messages | TUI only |
 | **Agents** | the server snapshot: the `running` map fed by `session.execution.*` events, scoped to the plugin's project directory | server |
 | **Jobs** | the server snapshot: `listActiveBackgroundTasks()` | server |
+| **Config banner** | `validatePluginConfig` messages (invalid config only) | TUI only |
+| **idle** | fixed text: `no active sessions` | TUI only |
 
-**Runtime models do not come from that file.** The V2 server plugin never reads the omo config
-chain (`loadOmoOpenCodeConfigChain` appears 0 times in `dist/index.js`, twice in
-`dist/tui-entry.js`). Per-agent models come from `~/.config/opencode/opencode.json`:
-`agents.<id>.model` for a specific agent, and the top-level `model` / `small_model` as the
-defaults. Consequences worth remembering:
+**Models are not part of the sidebar.** The V2 server plugin never reads the omo config chain
+(`loadOmoOpenCodeConfigChain`: 0 in `dist/index.js`, 2 in `dist/tui-entry.js`; the TUI half uses it
+only for the mount gate and the config banner). Per-agent models come from
+`~/.config/opencode/opencode.json`: `agents.<id>.model`, with the top-level `model` /
+`small_model` as defaults. The host resolves them per request.
 
-- the Models panel shows the omo file's *intent*; it can disagree with the model a session
-  actually runs, and nothing in the panel flags the disagreement;
-- editing `omo.jsonc` changes the panel within one heartbeat and changes nothing at runtime;
+History, and why the panel is gone: until 2026-11-17 the idle view listed a roster built from
+`~/.omo/omo.jsonc` (`resolveRoster`). Measured on the machine that removed it: 20 rows, of which
+6 of 11 agents named a different model than `opencode.json` and 9 were V1 categories with no V2
+counterpart. The removed config is archived verbatim in
+[`docs/reference/omo-config-archive.md`](../../../../../docs/reference/omo-config-archive.md).
+
 - the **Jobs** board is not the subagent board: the registry only holds `background_task`
   launches, while `subagent` children appear under **Agents** as executing sessions.
 
