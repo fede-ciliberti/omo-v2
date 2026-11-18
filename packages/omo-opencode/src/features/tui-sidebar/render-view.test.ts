@@ -24,11 +24,9 @@ const activeSections: ComputeViewSections = {
     kind: "live",
     goalsDone: 0,
     goalsTotal: 1,
-    pass: 1,
-    fail: 1,
-    pending: 0,
-    blocked: 0,
-    activeGoal: "g1",
+    pending: 2,
+    blocked: 1,
+    activeTask: "g1",
   },
 }
 
@@ -46,26 +44,29 @@ describe("tui sidebar renderView", () => {
     expect(description.indexOf("ULW")).toBeLessThan(description.indexOf("Agents"))
     expect(description.indexOf("Agents")).toBeLessThan(description.indexOf("Jobs"))
     expect(description).toContain("0/1")
-    expect(description).toContain("pass 1")
-    expect(description).toContain("fail 1")
+    expect(description).toContain("pending 2 blocked 1")
+    expect(description).toContain("active g1")
+    expect(description).not.toContain("pass ")
+    expect(description).not.toContain("fail ")
     expect(description).toContain("fixer")
     expect(description).toContain("explore repo")
     expect(nodes[0]?.kind).toBe("box")
   })
 
-  it("#given a redacted active goal #when describing #then it reports the active goal as private", () => {
+  it("#given a live loop with no open task #when describing #then it omits the active line", () => {
     // given
     const view = computeView({
       ...activeSections,
-      loop: { ...activeSections.loop, activeGoal: null },
+      loop: { ...activeSections.loop, activeTask: null },
     })
 
     // when
     const description = describeView(view)
 
     // then
-    expect(description).toContain("active private")
-    expect(description).not.toContain("active none")
+    expect(description).toContain("ULW")
+    expect(description).not.toContain("active ")
+    expect(description).not.toContain("private")
   })
 
   it("#given broken view #when describing #then it includes config invalid and run doctor", () => {

@@ -1,75 +1,89 @@
-# src/features/tui-sidebar/ — TUI Sidebar Snapshot + Mirror
+# src/features/tui-sidebar/ — TUI Sidebar Render Domain
 
-**Generated:** 2026-08-17
+**Generated:** 2026-11-18
 
 ## OVERVIEW
 
-22 .ts files (11 impl + 11 co-located tests). Two halves connected only by a JSON mirror file on disk: the plugin process writes runtime snapshots (`TuiStateMirror`), the TUI process polls the mirror, derives section states, and renders sidebar nodes. Gated on `tui.sidebar.enabled` (on unless explicitly `false`).
+15 `.ts` files (9 impl + 6 co-located tests). This directory is the **render domain** of the
+OpenCode TUI sidebar: state types, the snapshot schema, derivers, view selection, themed node
+construction and the palette adapter. It performs no file I/O and owns no transport.
+
+Both processes that consume it live elsewhere:
+
+- server producer: `src/v2/tui-sidebar/{producer,loop-source,channel,definition}.ts`
+- TUI slot: `src/v2/tui/sidebar.ts`, which claims `sidebar.content` with `append`
+
+Gated on `tui.sidebar.enabled` (on unless explicitly `false`). The gate is read on the TUI side,
+so a disabled sidebar simply never registers the slot.
 
 ## DATA FLOW
 
 ```
-plugin side:  events/heartbeat → TuiStateMirror.flush() → buildTuiRuntimeSnapshot() → writeMirror() (atomic JSON)
-TUI side:     1s poll → readMirror() → derivers → computeView() → viewKey diff → buildViewNodes() → sidebar_content
+server:  sessions + background tasks + boulder/plan
+           → buildSidebarSnapshot()  (v2/tui-sidebar/producer.ts)
+           → channel: 2 s heartbeat + 250 ms debounce on session/execution events
+wire:    rpc.omo-sidebar.sidebar-snapshot
+TUI:     parseSnapshot → deriveAgents/deriveJobBoard/deriveLoop → computeView → viewKey diff
+           → buildViewNodes → materializeNodes (JSX) → slot "sidebar.content"
 ```
 
 ## STRUCTURE
 
 | File | Purpose |
 |------|---------|
-| `snapshot-schema.ts` | Zod schema `TuiRuntimeSnapshotSchema` (version literal 1) + `parseSnapshot` |
-| `mirror-io.ts` | `writeMirror` (atomic, mode 0600) / `readMirror` — rejects unparseable, wrong-project, or stale (>6s) snapshots |
-| `mirror-path.ts` | XDG data dir + sha1(projectDir) prefix filename; `canonicalProjectDir` via realpath |
-| `derivers.ts` | Snapshot → section states; jobs sorted by status priority (running first), caps MAX_AGENTS/MAX_JOBS = 12 |
-| `compute-view.ts` | `computeView` picks active/broken/idle; `viewKey` gives stable string for re-render diffing |
+| `snapshot-schema.ts` | Zod `TuiRuntimeSnapshotSchema` (`SNAPSHOT_SCHEMA_VERSION = 2`) + `parseSnapshot` |
+| `state-types.ts` | `kind`-tagged section unions, `SidebarView`, `assertNever` |
+| `derivers.ts` | Snapshot → section states; jobs sorted by status priority (running first); caps `MAX_AGENTS`/`MAX_JOBS` = 12 |
+| `compute-view.ts` | `computeView` picks active/broken/idle; `viewKey` gives a stable string for re-render diffing |
 | `render-view.ts` | `buildViewNodes` (themed box/text tree) + `describeView` (plain lines); 24-char label truncation |
-| `state-types.ts` | Discriminated-union section states (`kind` tags) + `assertNever` |
+| `theme.ts` | `sidebarPalette`: adapts the V2 token TREE (`text.base`, `text.muted`, `text.feedback.*`, `border.base`) to the flat palette. Never returns `undefined`; unknown tokens degrade to fallbacks |
 | `element-helpers.ts` | `ViewNode` type + `box`/`text` constructors (renderer-agnostic) |
-| `theme.ts` | `sidebarPalette` — adapts the V2 token TREE (`text.base`, `text.muted`, `text.feedback.*`, `border.base`) to the flat palette the render layer reads. Never returns `undefined`: unknown tokens degrade to fallbacks, so a host theme change cannot crash the slot |
-| `constants.ts` | All timing/size knobs: STALE_MS 6s, HEARTBEAT_MS 2s, POLL_INTERVAL_MS 1s, WRITE_DEBOUNCE_MS 250ms, LOOP_FRESH_MS 120s |
+| `project-dir.ts` | `canonicalProjectDir` (realpath) so two spellings of the project compare equal |
+| `constants.ts` | Timing and size knobs: `STALE_MS` 6 s, `HEARTBEAT_MS` 2 s, `WRITE_DEBOUNCE_MS` 250 ms, `MAX_AGENTS`/`MAX_JOBS` 12, `LABEL_MAX` 24, `SNAPSHOT_SCHEMA_VERSION` 2 |
 
 ## KEY EXPORTS
 
-- `TuiStateMirror` — constructed in `src/create-managers.ts` when sidebar enabled; deps injected (`client`, `backgroundManager`, optional `getStatuses`/`sessionAgentResolver`).
-- `readMirror`, `computeView`, `viewKey`, `buildViewNodes`, derivers, `POLL_INTERVAL_MS` — consumed by `src/tui.ts` on the render side.
-- `TuiRuntimeSnapshot` — the cross-process contract; bump `MIRROR_SCHEMA_VERSION` on shape changes (readers drop non-matching versions).
+- `computeView`, `viewKey`, `buildViewNodes`, `describeView`, the derivers, `sidebarPalette`:
+  the render pipeline used by `src/v2/tui/sidebar.ts`.
+- `TuiRuntimeSnapshot` + `parseSnapshot`: the cross-process payload contract. Bump
+  `SNAPSHOT_SCHEMA_VERSION` on any shape change; a reader with a different version drops the
+  payload and renders `idle`.
+- `canonicalProjectDir`: used by both the channel (event filtering) and the slot (snapshot
+  project matching).
 
-## LIFECYCLE / WIRING
+## LIFECYCLE
 
-- Writer: `create-managers.ts` instantiates the mirror; `onEvent()` triggers debounced flush, `start()` adds heartbeat, `stop()` clears timers and resolves pending flushes.
-- Reader: `tui.ts` polls every 1s, re-renders only when `viewKey` changes, falls back to the idle view when the mirror is missing or stale.
-- View selection: active if any of agents/jobs/loop is live; broken if config invalid and nothing active; idle otherwise.
+There is no writer and no reader of files here. V1 polled a JSON mirror every second; that
+mechanism was removed with the V1 line and its last remnants (`mirror-io.ts`, `mirror-path.ts`,
+`qa/register-and-run.sh`) were deleted on 2026-11-18.
 
-## V2 WIRING — the producer lives under `src/v2/tui-sidebar/`
+- Server: `createSidebarChannel(ctx)` rebuilds the snapshot on a 2 s heartbeat and on debounced
+  session/execution events, then emits it.
+- TUI: subscribes to the event, asks for the current snapshot on mount, keeps the derived view in
+  `ctx.storage.memory` (reactive), and drops a snapshot older than `STALE_MS`.
+- View selection: active if any of agents/jobs/loop is live; broken if config is invalid and
+  nothing is active; idle otherwise.
 
-The V1 writer half (`TuiStateMirror`, `snapshot-builder`, `loop-reader`, `config-validator`)
-was removed with the V1 line (task 18), so `writeMirror` still has no caller and the file
-mirror path is dead in V2. The replacement keeps the same snapshot shape but pushes it over
-an RPC event instead of a file:
-
-| Module | Role |
-| --- | --- |
-| `src/v2/tui-sidebar/producer.ts` | Pure derivation: registry tasks + executing sessions -> `TuiRuntimeSnapshot` (same v1 shape). Redacts and bounds task titles; `toolCalls`/`lastTool` are `null` because the V2 registry does not track them |
-| `src/v2/tui-sidebar/definition.ts` | The `omo-sidebar` RPC contract shared by both processes |
-| `src/v2/tui-sidebar/channel.ts` | Server side: rebuilds on a 2 s heartbeat and on debounced session/execution events, then emits `rpc.omo-sidebar.sidebar-snapshot` |
-| `src/v2/tui/sidebar.ts` | TUI side: subscribes to that event, asks for the current snapshot on mount, keeps it in `ctx.storage.memory` (reactive) and drops it after `STALE_MS` without a push |
-
-`ctx.storage` is NOT shared between the server and TUI processes (measured), so it must never
-be used as the cross-process channel. RPC events measured 11-12 ms cross-process.
-
-The ULW/loop section still has no V2 source: the snapshot carries `loop: null` until Fase 3.
-
-## SOURCES OF TRUTH (V2): which file decides what
+## SOURCES OF TRUTH (V2)
 
 The sidebar is runtime-only since 2026-11-17: it renders what the server reports, plus one line
 when nothing is running. It does not list models.
 
 | Section | Source | Process |
 |---|---|---|
-| **Agents** | the server snapshot: the `running` map fed by `session.execution.*` events, scoped to the plugin's project directory | server |
-| **Jobs** | the server snapshot: `listActiveBackgroundTasks()` | server |
+| **Agents** | the `running` map fed by `session.execution.*`, scoped to the project directory | server |
+| **Jobs** | `listActiveBackgroundTasks()` from the orchestration registry | server |
+| **ULW** | the boulder state (`readBoulderState`) plus the active plan's checkboxes (`getPlanChecklist`) | server |
 | **Config banner** | `validatePluginConfig` messages (invalid config only) | TUI only |
 | **idle** | fixed text: `no active sessions` | TUI only |
+
+**ULW mapping.** `goalsDone`/`goalsTotal`/`pending` come from the plan checklist;
+`blocked` is `total - completed - remaining` (the parser counts `[~]` rows in the total only);
+`activeTask` is the first open top-level task label. A work counts as live when its status is
+`active` or `paused` (the same rule the continuation engine uses) **and** the plan has at least
+one checkbox. V1's `pass`/`fail` counters are gone: they came from `successCriteria` entries in
+`goals.json`, an artifact the OpenCode host never writes, and the `ulw-execute` ledger records no
+per-goal verdict. See `SNAPSHOT_SCHEMA_VERSION = 2`.
 
 **Models are not part of the sidebar.** The V2 server plugin never reads the omo config chain
 (`loadOmoOpenCodeConfigChain`: 0 in `dist/index.js`, 2 in `dist/tui-entry.js`; the TUI half uses it
@@ -83,19 +97,27 @@ History, and why the panel is gone: until 2026-11-17 the idle view listed a rost
 counterpart. The removed config is archived verbatim in
 [`docs/reference/omo-config-archive.md`](../../../../../docs/reference/omo-config-archive.md).
 
-- the **Jobs** board is not the subagent board: the registry only holds `background_task`
+- The **Jobs** board is not the subagent board: the registry only holds `background_task`
   launches, while `subagent` children appear under **Agents** as executing sessions.
+- `toolCalls`/`lastTool` are always `null` today (the V2 registry does not track them), so job rows
+  render `0` and `none`.
 
 ## CONVENTIONS
 
 - Every state is a `kind`-tagged union; exhaustive switches end in `assertNever`.
-- Failure means degrade, never throw: bad JSON, missing files, stale data all collapse to `null` / `{ kind: "none" }`. Only non-Error throws are rethrown.
-- All writes go through `writeFileAtomically`; readers validate version, project dir, and freshness before trusting the file. **V1 mirror path only**: V2 writes no mirror, see SOURCES OF TRUTH below.
-- Privacy: goal titles are redacted to `null` before writing; render side shows "private".
+- Failure means degrade, never throw: bad JSON, missing files and stale data all collapse to
+  `null` or `{ kind: "none" }`. Only non-Error throws are rethrown.
+- Rendering carries no secrets: the snapshot has agent names, task descriptions (flattened and
+  bounded to 60 chars) and plan task labels. It never carries prompts or message content.
+- Plan task labels are shown as-is: they are repository content, not runtime goal objectives.
 
 ## ANTI-PATTERNS
 
-- Don't share memory between plugin and TUI sides; the `omo-sidebar` RPC event is the only channel. The V1 mirror file is dead in V2.
-- Don't change snapshot shape without bumping `MIRROR_SCHEMA_VERSION`; old readers silently drop the file otherwise.
-- Don't write the mirror directly (V1 legacy); go through `TuiStateMirror.flush()` so debounce and in-flight dedup hold.
+- Don't share memory between the plugin and the TUI sides; the `omo-sidebar` RPC event is the only
+  channel. `ctx.storage` is not shared across processes (measured).
+- Don't change the snapshot shape without bumping `SNAPSHOT_SCHEMA_VERSION`.
+- Don't read files from this directory: the loop/boulder read belongs to
+  `src/v2/tui-sidebar/loop-source.ts`, which is server-side and read-only.
 - Don't add new timing values inline; all knobs live in `constants.ts`.
+- Don't render a counter the source cannot prove. A missing field is a gap to document, not a zero
+  to print.

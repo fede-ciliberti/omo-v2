@@ -1,9 +1,10 @@
 import type { Plugin } from "@opencode/plugin"
 
-import { HEARTBEAT_MS, STALE_MS, WRITE_DEBOUNCE_MS } from "../../features/tui-sidebar/constants"
-import { canonicalProjectDir } from "../../features/tui-sidebar/mirror-path"
+import { HEARTBEAT_MS, WRITE_DEBOUNCE_MS } from "../../features/tui-sidebar/constants"
+import { canonicalProjectDir } from "../../features/tui-sidebar/project-dir"
 import type { TuiRuntimeSnapshot } from "../../features/tui-sidebar/snapshot-schema"
 import { listActiveBackgroundTasks } from "../orchestration"
+import { readActiveLoop } from "./loop-source"
 import { buildSidebarSnapshot, type SidebarSession, type SidebarTask } from "./producer"
 
 type PluginContext = Parameters<Parameters<typeof Plugin.define>[0]["setup"]>[0]
@@ -15,8 +16,8 @@ type PluginContext = Parameters<Parameters<typeof Plugin.define>[0]["setup"]>[0]
  * rebuilds the same snapshot and hands it to the RPC emitter, which the TUI
  * receives as `rpc.omo-sidebar.sidebar-snapshot` (measured at 11-12 ms across
  * processes). A 2 s heartbeat doubles as the snapshot-on-attach path and as a
- * stale-data guard: a TUI that stopped receiving can treat the payload as
- * stale after {@link STALE_MS}.
+ * stale-data guard: a TUI that stopped receiving treats the payload as stale
+ * after its own freshness window.
  *
  * `ctx.storage` is deliberately NOT used: it is not shared between the server
  * and TUI processes (see the channel spike evidence).
@@ -146,6 +147,7 @@ export function createSidebarChannel(ctx: PluginContext): SidebarChannel {
       sessions,
       tasks: normalizeTasks(tasks),
       running,
+      loop: readActiveLoop(directory ?? process.cwd()),
       now: Date.now(),
     })
     latest = snapshot
@@ -232,12 +234,4 @@ export function createSidebarChannel(ctx: PluginContext): SidebarChannel {
   }
 
   return { snapshot, latest: () => latest, start }
-}
-
-/**
- * A payload older than {@link STALE_MS} must not be rendered as live state.
- * Paridad con V1: el lector descartaba el mirror viejo.
- */
-export function isStaleSnapshot(snapshot: TuiRuntimeSnapshot, now: number = Date.now()): boolean {
-  return now - snapshot.updatedAt > STALE_MS
 }

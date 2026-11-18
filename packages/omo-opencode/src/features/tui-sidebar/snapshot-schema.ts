@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { MIRROR_SCHEMA_VERSION } from "./constants"
+import { SNAPSHOT_SCHEMA_VERSION } from "./constants"
 import type { AgentStatus, LoopLive } from "./state-types"
 import type { BackgroundTaskStatus } from "../background-agent/types"
 
@@ -37,15 +37,13 @@ const LoopLiveSchema = z.object({
   kind: z.literal("live"),
   goalsDone: z.number().int().nonnegative(),
   goalsTotal: z.number().int().nonnegative(),
-  pass: z.number().int().nonnegative(),
-  fail: z.number().int().nonnegative(),
   pending: z.number().int().nonnegative(),
   blocked: z.number().int().nonnegative(),
-  activeGoal: z.string().nullable(),
+  activeTask: z.string().nullable(),
 }) satisfies z.ZodType<LoopLive>
 
 export const TuiRuntimeSnapshotSchema = z.object({
-  version: z.literal(MIRROR_SCHEMA_VERSION),
+  version: z.literal(SNAPSHOT_SCHEMA_VERSION),
   projectDir: z.string(),
   updatedAt: z.number(),
   activeAgents: z.array(AgentRowSchema),

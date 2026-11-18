@@ -83,10 +83,10 @@ function loopNodes(loop: LoopState, theme: SidebarPalette): ViewNode[] {
       return [
         section("ULW", theme, [
           text({ fg: theme.text }, `goals ${loop.goalsDone}/${loop.goalsTotal}`),
-          text({ fg: theme.success }, `pass ${loop.pass}`),
-          text({ fg: theme.error }, `fail ${loop.fail}`),
           text({ fg: theme.textMuted }, `pending ${loop.pending} blocked ${loop.blocked}`),
-          text({ fg: theme.accent }, `active ${truncate(activeGoalLabel(loop.activeGoal))}`),
+          ...(loop.activeTask === null
+            ? []
+            : [text({ fg: theme.accent }, `active ${truncate(loop.activeTask)}`)]),
         ]),
       ]
     default:
@@ -102,10 +102,8 @@ function loopLines(loop: LoopState): string[] {
       return [
         "ULW",
         `goals ${loop.goalsDone}/${loop.goalsTotal}`,
-        `pass ${loop.pass}`,
-        `fail ${loop.fail}`,
         `pending ${loop.pending} blocked ${loop.blocked}`,
-        `active ${activeGoalLabel(loop.activeGoal)}`,
+        ...(loop.activeTask === null ? [] : [`active ${loop.activeTask}`]),
       ]
     default:
       return assertNever(loop)
@@ -196,8 +194,4 @@ function section(title: string, theme: SidebarPalette, children: readonly ViewNo
 function truncate(value: string | null | undefined): string {
   const label = value ?? ""
   return label.length <= LABEL_MAX ? label : `${label.slice(0, LABEL_MAX - 3)}...`
-}
-
-function activeGoalLabel(activeGoal: string | null): string {
-  return activeGoal ?? "private"
 }
