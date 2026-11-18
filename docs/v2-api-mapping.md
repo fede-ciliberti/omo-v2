@@ -276,10 +276,10 @@ Key V2 TUI surfaces (with `.d.ts` line citations):
 |---|---|---|---|
 | `tui.ts` (module + sidebar polling) | 1 | 199 | `Plugin.define` + `ctx.ui.slot({replace|append: "sidebar.content"})` + `ctx.data` polling |
 | `features/btw-side/tui-*` | 16 | ~2,050 | `ctx.keymap.layer`, `ctx.ui.slot({append:"prompt.footer"})`, `ctx.ui.dialog/toast`, `ctx.data.session`, `ctx.client.session` |
-| `features/tui-sidebar/*` | 14 | ~1,190 | `ctx.ui.slot({append:"sidebar.content"})`, `ctx.data.{session,project,location}` |
+| `features/tui-sidebar/*` | 9 | ~670 | `ctx.ui.slot({append:"sidebar.content"})`; render domain only (schema, derivers, view, nodes, palette) |
 | `features/native-edition-nudge` | 1 | ~small | `ctx.ui.toast` / `ctx.attention.notify` |
 
-**Total TUI binding layer ≈ 3,400–3,600 lines** (excluding tests), concentrated in the slot/keymap/render adapters — a bounded rewrite, not a re-architecture. The domain logic (compute-view, derivers, roster-resolver, mirror-io, snapshot-builder) is largely reusable.
+**Total TUI binding layer ≈ 3,400–3,600 lines** (excluding tests), concentrated in the slot/keymap/render adapters — a bounded rewrite, not a re-architecture. The render domain (compute-view, derivers, render-view, theme, snapshot-schema) was reused as-is; the V1 file mirror was replaced by an RPC channel and the loop source was rewritten against the boulder state.
 
 **OMC sidebar feature → V2 slot map**:
 

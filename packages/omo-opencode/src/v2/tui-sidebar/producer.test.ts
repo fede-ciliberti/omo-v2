@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 
-import { MAX_AGENTS, MAX_JOBS, MIRROR_SCHEMA_VERSION } from "../../features/tui-sidebar/constants"
+import { MAX_AGENTS, MAX_JOBS, SNAPSHOT_SCHEMA_VERSION } from "../../features/tui-sidebar/constants"
+import type { LoopLive, LoopState } from "../../features/tui-sidebar/state-types"
 import { buildSidebarSnapshot, safeTaskTitle, type SidebarTask } from "./producer"
 
 function task(overrides: Partial<SidebarTask> & { id: string }): SidebarTask {
@@ -16,6 +17,7 @@ function task(overrides: Partial<SidebarTask> & { id: string }): SidebarTask {
 const base = {
   projectDir: "/tmp/project",
   now: 1_700_000_000_000,
+  loop: { kind: "none" } as LoopState,
 }
 
 describe("v2 sidebar producer", () => {
@@ -32,7 +34,7 @@ describe("v2 sidebar producer", () => {
     const snapshot = buildSidebarSnapshot(input)
 
     // then
-    expect(snapshot.version).toBe(MIRROR_SCHEMA_VERSION)
+    expect(snapshot.version).toBe(SNAPSHOT_SCHEMA_VERSION)
     expect(snapshot.projectDir).toBe("/tmp/project")
     expect(snapshot.updatedAt).toBe(base.now)
     expect(snapshot.activeAgents).toEqual([
@@ -43,6 +45,30 @@ describe("v2 sidebar producer", () => {
       { title: "write the docs", status: "running", toolCalls: null, lastTool: null },
     ])
     expect(snapshot.loop).toBeNull()
+  })
+
+  it("#given a live loop #when building #then the snapshot carries it unchanged", () => {
+    // given
+    const loop: LoopLive = {
+      kind: "live",
+      goalsDone: 2,
+      goalsTotal: 5,
+      pending: 2,
+      blocked: 1,
+      activeTask: "T4 wire the producer",
+    }
+
+    // when
+    const snapshot = buildSidebarSnapshot({
+      ...base,
+      sessions: [],
+      tasks: [],
+      running: new Map<string, string | null>(),
+      loop,
+    })
+
+    // then
+    expect(snapshot.loop).toEqual(loop)
   })
 
   it("#given an idle session #when building #then it is not reported as active", () => {

@@ -1,8 +1,5 @@
-export const MIRROR_DIR_NAME = "tui-state"
-export const MIRROR_SCHEMA_VERSION = 1
+export const SNAPSHOT_SCHEMA_VERSION = 2
 export const STALE_MS = 6_000
-export const LOOP_FRESH_MS = 120_000
-export const POLL_INTERVAL_MS = 1_000
 export const HEARTBEAT_MS = 2_000
 export const WRITE_DEBOUNCE_MS = 250
 export const MAX_AGENTS = 12

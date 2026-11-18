@@ -29,11 +29,9 @@ const liveLoop: LoopState = {
   kind: "live",
   goalsDone: 1,
   goalsTotal: 3,
-  pass: 4,
-  fail: 0,
   pending: 2,
   blocked: 1,
-  activeGoal: "Ship sidebar",
+  activeTask: "Ship sidebar",
 }
 
 describe("tui sidebar computeView", () => {
@@ -153,11 +151,9 @@ describe("tui sidebar computeView", () => {
       },
       agents: { agents: [{ status: "busy", name: "sisyphus" }], kind: "list" },
       loop: {
-        activeGoal: "Ship sidebar",
+        activeTask: "Ship sidebar",
         blocked: 1,
         pending: 2,
-        fail: 0,
-        pass: 4,
         goalsTotal: 3,
         goalsDone: 1,
         kind: "live",

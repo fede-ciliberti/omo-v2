@@ -26,15 +26,22 @@ export type JobBoardState =
   | { readonly kind: "none" }
   | { readonly kind: "list"; readonly jobs: readonly JobRow[] }
 
+/**
+ * Live ULW/loop sections, sourced from the boulder state and the active plan.
+ *
+ * `pass`/`fail` are gone: they came from V1 `successCriteria` entries in
+ * `goals.json`, an artifact the OpenCode host never produces. The plan parser
+ * gives completed/remaining/total plus the blocked rows (`[~]`), which is what
+ * this shape reports.
+ */
 export type LoopLive = {
   readonly kind: "live"
   readonly goalsDone: number
   readonly goalsTotal: number
-  readonly pass: number
-  readonly fail: number
   readonly pending: number
   readonly blocked: number
-  readonly activeGoal: string | null
+  /** First open top-level task label, or null when nothing is open. */
+  readonly activeTask: string | null
 }
 
 export type LoopState = { readonly kind: "none" } | LoopLive

@@ -6,7 +6,7 @@ import {
   deriveJobBoard,
   deriveLoop,
 } from "./derivers"
-import { MAX_AGENTS, MAX_JOBS, MIRROR_SCHEMA_VERSION } from "./constants"
+import { MAX_AGENTS, MAX_JOBS, SNAPSHOT_SCHEMA_VERSION } from "./constants"
 import type { TuiRuntimeSnapshot } from "./snapshot-schema"
 import type { AgentRow, JobRow, LoopLive } from "./state-types"
 
@@ -14,11 +14,9 @@ const liveLoop: LoopLive = {
   kind: "live",
   goalsDone: 2,
   goalsTotal: 5,
-  pass: 3,
-  fail: 1,
   pending: 4,
   blocked: 2,
-  activeGoal: "Ship sidebar",
+  activeTask: "Ship sidebar",
 }
 
 function snapshot(input: {
@@ -27,7 +25,7 @@ function snapshot(input: {
   readonly loop?: LoopLive | null
 }): TuiRuntimeSnapshot {
   return {
-    version: MIRROR_SCHEMA_VERSION,
+    version: SNAPSHOT_SCHEMA_VERSION,
     projectDir: "/tmp/project",
     updatedAt: 1,
     activeAgents: [...(input.activeAgents ?? [])],
@@ -175,11 +173,9 @@ describe("tui sidebar section derivers", () => {
       kind: "live",
       goalsDone: 2,
       goalsTotal: 5,
-      pass: 3,
-      fail: 1,
       pending: 4,
       blocked: 2,
-      activeGoal: "Ship sidebar",
+      activeTask: "Ship sidebar",
     })
   })
 })

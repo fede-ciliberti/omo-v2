@@ -9,7 +9,7 @@ import {
   deriveJobBoard,
   deriveLoop,
 } from "../../features/tui-sidebar/derivers"
-import { canonicalProjectDir } from "../../features/tui-sidebar/mirror-path"
+import { canonicalProjectDir } from "../../features/tui-sidebar/project-dir"
 import { buildViewNodes } from "../../features/tui-sidebar/render-view"
 import { parseSnapshot, type TuiRuntimeSnapshot } from "../../features/tui-sidebar/snapshot-schema"
 import type { SidebarView } from "../../features/tui-sidebar/state-types"

@@ -43,7 +43,7 @@
 | 18 | Skills load | `omo.skill list` → listing (builtin opencode skill + lokasi fallback OMC) | **PASS** | task-19/06-skill-list.log; task-14/skill-list.log |
 | 19 | Config normalization (V1 config as-is) | `debug config` exit 0; sha256 before==after (in-memory, no rewrite); mapping model/plugin/provider/enabled_providers/mcp → V2 shape | **PASS** | task-3/{debug-config-stdout.log,config-hash-*}; docs/v2-config-normalization.md |
 | 20 | Config/installer migration dry-run | Field-rename mapping + tui.json→cli.json preview tanpa menyentuh production | **PASS** | task-14/{config-dryrun-console,config-preview,config-report}.log |
-| 21 | TUI (registerTui binding) | smoke mock-Context: 2 slot claim, 2 keymap layer, cleanup bersih; plugin TUI entrypoint termuat (`omo-tui-test` via `plugin list`); sidebar.content rendered on a real terminal (tmux, OpenCode 2.3.0) showing Models, and Agents + Jobs fed by a live RPC snapshot that self-updated without touching the window | **PASS\*** (ULW/loop section pending — see Limitasi) | task-15/{smoke-register-tui,plugin-list-warm}.log |
+| 21 | TUI (registerTui binding) | smoke mock-Context: 2 slot claim, 2 keymap layer, cleanup bersih; plugin TUI entrypoint termuat (`omo-tui-test` via `plugin list`); `sidebar.content` driven on a real terminal (xterm.js, OpenCode 2.3.0): Agents + Jobs from a live RPC snapshot, and the ULW block (`goals`, `pending`/`blocked`, `active task`) fed by the boulder state, updating in place on a 2 s heartbeat without touching the window | **PASS** | task-15/{smoke-register-tui,plugin-list-warm}.log; `.omo/evidence/2026-11-18-sidebar-loop-and-cleanup/` |
 | 22 | DCP 3.2.0 | Load 'DCP V2 initialized'; `rpc.call rpcID=dcp method=status` → `{"enabled":true}`; tool compress terdaftar di registry gabungan | **PASS\*** (eksekusi compress butuh sesi model — lihat Limitasi) | task-19/{07-dcp-status,02-tools-list}.log; task-7 |
 | 23 | Tokenscope (PR #50) | Load di V2 (v2.0.0 build); tool tokenscope terdaftar di registry gabungan; e2e PR 2/2 pass (tool register + execute) | **PASS\*** (metrik token real butuh sesi model — lihat Limitasi) | task-19/02-tools-list.log; task-8 (e2e); task-16 |
 | 24 | Companion integration (3 plugin bersamaan) | Smoke gabungan di atas: status + agents + tools + dcp status + MCP connected dalam SATU service | **PASS** | task-16/task-16 JSON + task-19 semua log |
@@ -87,10 +87,11 @@ menandai bagian yang membutuhkan model live:
    RPC status + e2e tokenscope (tool execute via PR test harness) terbukti; eksekusi dalam
    sesi model live = pasca-cutover.
 5. **TUI render terminal nyata** (baris 21) — binding + slot claim + keymap terbukti via
-   mock-Context smoke + plugin load. The `sidebar.content` claim is now ALSO driven on a real
-   TTY (tmux, OpenCode 2.3.0): `Models` paints after the theme token adapter landed, and
-   `Agents` + `Jobs` render from the live RPC snapshot, updating in place when the producer
-   state changes. The ULW/loop section remains pending because it has no V2 source yet.
+   mock-Context smoke + plugin load. The `sidebar.content` claim is also driven on a real
+   terminal (xterm.js, OpenCode 2.3.0): `Agents` + `Jobs` render from the live RPC snapshot,
+   and the `ULW` block renders `goals`, `pending`/`blocked` and the active task from the
+   boulder state, updating in place on a 2 s heartbeat. The model roster is intentionally
+   gone: the sidebar is runtime-only since 2026-11-17.
 
 Klasifikasi ini konsisten dengan plan task-19 ("model-dependent → catatan batasan jujur")
 dan TIDAK mengecualikan fitur apa pun tanpa dokumentasi.

@@ -92,11 +92,9 @@ describe("tui sidebar state types", () => {
         kind: "live",
         goalsDone: 1,
         goalsTotal: 2,
-        pass: 3,
-        fail: 0,
         pending: 1,
         blocked: 0,
-        activeGoal: null,
+        activeTask: null,
       },
       agents: {
         kind: "list",

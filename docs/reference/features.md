@@ -144,7 +144,7 @@ See the **[Team Mode Guide](../guide/team-mode.md)** for configuration, team spe
 - **Tool system**: `packages/omo-opencode/src/tools/` has 14 tool-producing directories plus a shared helper directory. The registry exposes **12 to 38 tools** depending on config gates. The 9 LSP aliases are served by the built-in `lsp` MCP, not by the tool registry.
 - **Hook system**: the 5-tier composers define **58 slots** (Session 23 + Tool Guard 18 + Transform 8 + Continuation 7 + Skill 2). Default config activates about 50-51; the maximum is 62 when the 4 direct Team Mode event handlers are included.
 - **MCP system**: 3 tiers: built-in MCPs with 3 remote servers (`websearch`, `context7`, `grep_app`) plus local stdio `lsp`, `.mcp.json` loader, and skill-embedded MCP from `SKILL.md` frontmatter.
-- **Managers and controllers**: startup creates TmuxSessionManager, BackgroundManager, SkillMcpManager, ConfigHandler, and ModelFallbackControllerAccessor fields, plus optional TuiStateMirror and MonitorManager fields.
+- **Managers and controllers**: startup creates TmuxSessionManager, BackgroundManager, SkillMcpManager, ConfigHandler, and ModelFallbackControllerAccessor fields, plus an optional MonitorManager field.
 - **Config pipeline**: 6 phases in order: provider, plugin-components, agents, tools, MCPs, commands.
 - **OpenClaw**: bidirectional integrations for Discord, Telegram, HTTP, and shell with reply listener daemon.
 

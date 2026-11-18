@@ -98,13 +98,5 @@ function loopKeyParts(loop: LoopState): readonly unknown[] {
 }
 
 function liveLoopKeyParts(loop: LoopLive): readonly unknown[] {
-  return [
-    loop.goalsDone,
-    loop.goalsTotal,
-    loop.pass,
-    loop.fail,
-    loop.pending,
-    loop.blocked,
-    loop.activeGoal,
-  ]
+  return [loop.goalsDone, loop.goalsTotal, loop.pending, loop.blocked, loop.activeTask]
 }

@@ -13,7 +13,6 @@
 export const SIDEBAR_RPC_ID = "omo-sidebar"
 export const SIDEBAR_METHOD = "sidebar-snapshot"
 export const SIDEBAR_EVENT = "sidebar-snapshot"
-export const SIDEBAR_EVENT_TYPE = `rpc.${SIDEBAR_RPC_ID}.${SIDEBAR_EVENT}`
 
 const OBJECT_SCHEMA = { type: "object", additionalProperties: true } as const
 

@@ -1,5 +1,5 @@
-import { MAX_AGENTS, MAX_JOBS, MIRROR_SCHEMA_VERSION } from "../../features/tui-sidebar/constants"
-import type { AgentRow, AgentStatus, JobRow } from "../../features/tui-sidebar/state-types"
+import { MAX_AGENTS, MAX_JOBS, SNAPSHOT_SCHEMA_VERSION } from "../../features/tui-sidebar/constants"
+import type { AgentRow, AgentStatus, JobRow, LoopState } from "../../features/tui-sidebar/state-types"
 import type { TuiRuntimeSnapshot } from "../../features/tui-sidebar/snapshot-schema"
 
 /**
@@ -35,6 +35,7 @@ export type SnapshotInput = {
   readonly sessions: readonly SidebarSession[]
   readonly tasks: readonly SidebarTask[]
   readonly running: RunningSessions
+  readonly loop: LoopState
   readonly now: number
 }
 
@@ -120,12 +121,13 @@ export function buildSidebarSnapshot(input: SnapshotInput): TuiRuntimeSnapshot {
     .slice(0, MAX_AGENTS)
 
   return {
-    version: MIRROR_SCHEMA_VERSION,
+    version: SNAPSHOT_SCHEMA_VERSION,
     projectDir: input.projectDir,
     updatedAt: input.now,
     activeAgents,
     jobBoard: tasks.map(toJobRow),
-    // The ULW/loop section has no V2 source yet (see the plan, Fase 3).
-    loop: null,
+    // The source returns `none` when no continuable work owns a plan, which the
+    // wire contract expresses as `null`.
+    loop: input.loop.kind === "live" ? input.loop : null,
   }
 }
