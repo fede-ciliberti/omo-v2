@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { registerAgents } from "./agents"
+import { ATLAS_DOCTRINE_BASE } from "./agents/atlas-doctrine"
+import { ATLAS_FAMILY_OVERLAYS } from "./agents/atlas-family-overlays"
 import { FAMILY_OVERLAYS } from "./agents/family-overlays"
 import { SISYPHUS_DOCTRINE_BASE } from "./agents/sisyphus-doctrine"
 
@@ -107,6 +109,52 @@ describe("registerAgents doctrine wiring", () => {
     for (const key of Object.keys(input.options)) {
       expect(EXPECTED_OPTION_KEYS).toContain(key)
     }
+  })
+
+  test("#given a registered atlas request #when the context hook runs #then one atlas part carries base+overlay and only temperature is written", async () => {
+    // given
+    const { ctx, hooks } = makeContext()
+    await registerAgents(ctx as never)
+    const hook = hooks.get("context")
+    if (hook === undefined) throw new Error("no context hook registered")
+    const input: ContextHookInput = {
+      agent: "atlas",
+      model: { id: "google/gemini-3-pro" },
+      system: [{ type: "text", text: ATLAS_DOCTRINE_BASE }],
+      options: { hostKey: "host-value" },
+    }
+
+    // when
+    hook(input)
+
+    // then
+    const doctrineParts = input.system.filter((part) => part.text?.startsWith(ATLAS_DOCTRINE_BASE))
+    expect(doctrineParts).toHaveLength(1)
+    expect(doctrineParts[0]?.text).toBe(`${ATLAS_DOCTRINE_BASE}\n\n${ATLAS_FAMILY_OVERLAYS.gemini}`)
+    expect(input.options).toEqual({ hostKey: "host-value", temperature: 0.1 })
+  })
+
+  test("#given the plugin context #when agents register #then atlas ships the canonical doctrine module verbatim", async () => {
+    // given
+    const { ctx, agents } = makeContext()
+
+    // when
+    await registerAgents(ctx as never)
+
+    // then
+    expect(agents.get("atlas")?.system).toBe(ATLAS_DOCTRINE_BASE)
+    expect(agents.get("atlas")?.mode).toBe("primary")
+  })
+
+  test("#given the plugin context #when agents register #then exactly one context hook is registered", async () => {
+    // given
+    const { ctx, hooks } = makeContext()
+
+    // when
+    await registerAgents(ctx as never)
+
+    // then
+    expect([...hooks.keys()]).toEqual(["context"])
   })
 
   test("#given a registered oracle request #when the context hook runs #then no doctrine part is added", async () => {

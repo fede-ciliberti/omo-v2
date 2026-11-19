@@ -56,10 +56,10 @@ omo-native TANPA `@opencode-ai` → di luar port scope (task-5 verdict), bukan b
 
 > Scope note on the verdict: rows 1-25 measure plugin wiring and owner-used feature surfaces.
 > None of them measures prompt fidelity, so the PASS count below says nothing about
-> agent-doctrine completeness. Rows 26-31 carry that axis separately and are NOT part of the
+> agent-doctrine completeness. Rows 26-32 carry that axis separately and are NOT part of the
 > 24/24 count.
 
-## Agent doctrine and prompt fidelity (rows 26-31)
+## Agent doctrine and prompt fidelity (rows 26-32)
 
 | # | Fitur (owner-used) | Skenario runtime | Hasil | Evidence |
 |---|---|---|---|---|
@@ -68,7 +68,29 @@ omo-native TANPA `@opencode-ai` → di luar port scope (task-5 verdict), bukan b
 | 28 | Dead-primitive repair in agent prompt bodies | the repair is in `packages/omo-opencode/src/v2/agents.ts`: prompt bodies name `subagent(...)` and no longer name `call_omo_agent`/`load_skills`/`subagent_type`/`run_in_background`/`look_at`, nor `background_output`/`background_task`; gate is `grep -nE` on that file (0 lines, while the same greps on `git show HEAD:` return 15 + 1) plus the `omo.agents get metis` / `get sisyphus-junior` RPC assertions | **PASS** (repair landed and proven on both the source and the RPC payload) | task-4-v2-sisyphus-orchestration-port.txt; task-11-v2-sisyphus-orchestration-port.json |
 | 29 | Sub-session continuation (`subagent` plus `sessionID`) | doctrine section `continuation` prescribes continuing a child with its returned `sessionID` instead of restarting it; a live session then sent a follow-up call carrying an existing `sessionID` whose result was that same child, with the distinct-child count unchanged | **PASS** (contract plus live transcript; the model only reached for it once the prompt named the parameter, recorded in the evidence notes) | task-12-v2-sisyphus-orchestration-port.jsonl; task-12-notes.md |
 | 30 | Doctrine-supporting hooks (V1 parity gap) | four V1 hooks have no V2 counterpart: todo-continuation enforcer, compaction context and todo preservation, delegate-task-retry, empty-task-response detector | **DEFERRED** (no V2 port; follow-up plan `v2-doctrine-support-hooks`) | follow-up plan `v2-doctrine-support-hooks` (planned) |
-| 31 | Hephaestus and Atlas doctrine (prompt fidelity) | hephaestus and atlas remain reduced identity ports in `packages/omo-opencode/src/v2/agents.ts`; only their dead prompt references were repaired, no doctrine was ported | **DEFERRED** (follow-up plan `v2-hephaestus-atlas-doctrine`) | follow-up plan `v2-hephaestus-atlas-doctrine` (planned) |
+| 31 | Atlas doctrine (prompt fidelity) | `agents/atlas-doctrine.ts` exports `ATLAS_DOCTRINE_SECTION_IDS` (12 ids, in order: identity, mission, anti-duplication, delegation-system, auto-continue, parallel-by-default, workflow, verification, boundaries, critical-overrides, post-delegation, completion) plus the `ATLAS_DOCTRINE_BASE` body, and every named primitive is one this harness exposes (`subagent`, `subagent` continuation via `sessionID`, `todowrite`, `bash`); `agents/atlas-family-overlays.ts` covers every `FamilyId` with six distinct overlays (`fallback` empty, `kimi-k3`/`kimi-k2-7` and `gpt-5-4`/`gpt-5-5` identical pairs) and sets only `{ temperature: 0.1 }`; `agents/doctrine-hook.ts` registers `atlas` in `REGISTRY` beside `sisyphus`, so the `ctx.session.hook("context")` seam composes base + the request family's overlay; the size budget is enforced by `atlas-family-overlays.test.ts` (base + every overlay <= 12000), so no character count is restated here where it would rot on the next edit | **PASS** (delivery is proven on the live RPC: `omo.agents get atlas` returns 8,708 characters carrying all 12 section ids and no dead identifier, byte-identical to the module; behaviour is proven from the live transcript - three `subagent` calls in one assistant message with three distinct child sessions, six-heading briefs in every delegation, and every plan checkbox ticked after a delegation. Residual risk, declared: the bare end state (`completed === 3`) is not attributable to the doctrine on its own, because a zero-delegation control also ticks a checklist it was handed; attribution rests on the delegation count plus tick ordering, recorded in task-9) | `packages/omo-opencode/src/v2/agents/atlas-doctrine.ts`; `packages/omo-opencode/src/v2/agents/atlas-family-overlays.ts`; `packages/omo-opencode/src/v2/agents/doctrine-hook.ts`; task-3-v2-atlas-orchestration-port.txt; task-4-v2-atlas-orchestration-port.txt; task-7-v2-atlas-orchestration-port.json and task-8-v2-atlas-orchestration-port.jsonl (produced); task-9-ordering.txt |
+| 32 | Hephaestus doctrine (prompt fidelity) | hephaestus remains a reduced identity port in `packages/omo-opencode/src/v2/agents.ts`; only its dead prompt references were repaired, no doctrine was ported and the hook registry intentionally carries no `hephaestus` entry | **DEFERRED** (no V2 doctrine; follow-up plan `v2-hephaestus-doctrine`) | follow-up plan `v2-hephaestus-doctrine` (planned) |
+
+### Declared exclusions for rows 31-32
+
+Three items were deliberately left out of the Atlas port. They are recorded here rather than
+silently dropped:
+
+1. **Permission enforcement of "never writes code".** The Atlas boundary is doctrinal only: the
+   doctrine says Atlas coordinates and delegates instead of editing, and no permission or
+   tool-deny rule backs it. Enforcing it would require proof that a `subagent` child actually
+   inherits the parent's permission set, and that inheritance is unproven in this harness (plan
+   todo 8 measures behaviour, not permissions).
+2. **Stale consumer line in `packages/prompts-core/AGENTS.md`.** That file still names
+   `agents/atlas/agent.ts` as a consumer of the prompt bank, but the V1 Atlas agent module was
+   deleted with the V1 line, so the reference points at nothing. It is recorded here as a known
+   docs defect, not fixed: `packages/prompts-core/` is outside this plan's write scope.
+3. **Dropped `notepad_protocol` and `boulder_completion_response` V1 sections.** Neither subsystem
+   exists in this harness: there is no notepad consumer anywhere under
+   `packages/omo-opencode/src/v2/` (only the unreferenced `NOTEPAD_DIR`/`NOTEPAD_BASE_PATH`
+   constants in `packages/boulder-state/src/constants.ts`), and there is no completion nudge
+   ("BOULDER COMPLETE") to trigger. `boulder-continuation` already owns the loop and is
+   agent-agnostic, so porting either section would invent a subsystem.
 
 ## Limitasi terdokumentasi (bukan pengecualian diam-diam)
 

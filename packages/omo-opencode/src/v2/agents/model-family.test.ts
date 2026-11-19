@@ -20,6 +20,8 @@ describe("resolveModelFamily", () => {
       ["openai/gpt-5.6-sol", "gpt-5-5"],
       ["moonshot/kimi-k2-7", "kimi-k2-7"],
       ["moonshot/kimi-k2.5", "kimi-k2-6"],
+      ["google/gemini-3-pro", "gemini"],
+      ["gemini-3-flash", "gemini"],
     ]
 
     // when resolved
@@ -104,6 +106,7 @@ describe("resolveModelFamily", () => {
       "claude-opus-4-8": "anthropic/claude-opus-4.8",
       "claude-opus-4-7": "anthropic/claude-opus-4.7",
       "glm-5-2": "zhipu/glm-5.2",
+      gemini: "google/gemini-3-pro",
       fallback: "vllm/deepseek-v4.1-flash-pool",
     }
 
@@ -115,5 +118,34 @@ describe("resolveModelFamily", () => {
 
     // then the reached families are the full tuple, in its order
     expect(reached).toEqual([...FAMILY_IDS])
+  })
+
+  test("gemini routes before the kimi predicates and stays case-insensitive", () => {
+    // given a Gemini id behind a provider prefix, a bare one, and a mixed-case one
+    const prefixed = resolveModelFamily("google/gemini-3-pro")
+    const bare = resolveModelFamily("gemini-3-flash")
+    const mixedCase = resolveModelFamily("Google/Gemini-3.1-Pro")
+
+    // when resolved
+    // then the gemini family wins, and the provider prefix never selects it
+    expect(prefixed).toBe("gemini")
+    expect(bare).toBe("gemini")
+    expect(mixedCase).toBe("gemini")
+  })
+
+  test("the kimi families are untouched by the gemini branch", () => {
+    // given the ids the pre-existing kimi assertions rely on
+    const cases: Array<[string, string]> = [
+      ["moonshot/kimi-k2-7-k3", "kimi-k3"],
+      ["moonshot/kimi-k3", "kimi-k3"],
+      ["moonshot/kimi-k2-7", "kimi-k2-7"],
+      ["moonshot/kimi-k2.5", "kimi-k2-6"],
+    ]
+
+    // when resolved
+    const families = cases.map(([id]) => resolveModelFamily(id))
+
+    // then every kimi routing decision is the same as before the gemini branch existed
+    expect(families).toEqual(cases.map(([, family]) => family))
   })
 })
