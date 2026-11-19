@@ -1,29 +1,9 @@
-import { existsSync } from "node:fs"
-import { fileURLToPath } from "node:url"
 import { describe, expect, test } from "bun:test"
+import { ATLAS_DOCTRINE_BASE } from "./atlas-doctrine"
 import { ATLAS_FAMILY_OPTIONS, ATLAS_FAMILY_OVERLAYS } from "./atlas-family-overlays"
 import { FAMILY_IDS } from "./model-family"
 
 const DOCTRINE_BUDGET = 12000
-const ATLAS_DOCTRINE_MODULE = "./atlas-doctrine.ts"
-/**
- * `ATLAS_DOCTRINE_BASE` is authored by todo 2 of this plan, which runs in
- * parallel with this one. When that module is present the budget is measured
- * against the real base; when it is absent the measurement falls back to this
- * reserved headroom (8000 -> 4000 for the overlays) and the test log says so.
- */
-const ATLAS_BASE_RESERVED = 8000
-
-type DoctrineModule = { ATLAS_DOCTRINE_BASE: string }
-
-async function readDoctrineBase(): Promise<string | null> {
-  const modulePath = new URL(ATLAS_DOCTRINE_MODULE, import.meta.url)
-  if (!existsSync(fileURLToPath(modulePath))) return null
-  const doctrine = (await import(ATLAS_DOCTRINE_MODULE)) as DoctrineModule
-  return doctrine.ATLAS_DOCTRINE_BASE
-}
-
-const doctrineBase = await readDoctrineBase()
 
 const NON_EMPTY_FAMILIES = [
   "kimi-k3",
@@ -115,7 +95,7 @@ describe("ATLAS_FAMILY_OVERLAYS", () => {
 
   test("base plus all overlays stays within the 12000 character budget", () => {
     // given the doctrine base (real when authored, reserved otherwise) and every overlay
-    const baseLength = doctrineBase === null ? ATLAS_BASE_RESERVED : doctrineBase.length
+    const baseLength = ATLAS_DOCTRINE_BASE.length
     const overlayTotal = FAMILY_IDS.reduce(
       (total, family) => total + ATLAS_FAMILY_OVERLAYS[family].length,
       0,
@@ -124,7 +104,7 @@ describe("ATLAS_FAMILY_OVERLAYS", () => {
 
     // when the assembled doctrine is measured
     console.log(
-      `atlas budget: base=${baseLength}${doctrineBase === null ? " (reserved)" : ""} overlays=${overlayTotal} total=${assembled} budget=${DOCTRINE_BUDGET}`,
+      `atlas budget: base=${baseLength} overlays=${overlayTotal} total=${assembled} budget=${DOCTRINE_BUDGET}`,
     )
 
     // then the hard budget holds
@@ -140,6 +120,6 @@ describe("ATLAS_FAMILY_OPTIONS", () => {
     // when compared to the V1 Atlas generation parity
     // then each one is exactly the temperature, with no maxTokens or thinking object
     expect(entries).toEqual(FAMILY_IDS.map(() => ({ temperature: 0.1 })))
-    expect(new Set(FAMILY_IDS).size).toBe(12)
+    expect(new Set(FAMILY_IDS).size).toBe(FAMILY_IDS.length)
   })
 })

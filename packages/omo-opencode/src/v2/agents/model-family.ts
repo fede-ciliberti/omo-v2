@@ -103,8 +103,10 @@ function isGptNative(name: string): boolean {
  * variant (`packages/prompts-core/src/atlas-prompts.ts:11-26`; the same order
  * documented in `omo-v1/dev:packages/omo-opencode/src/agents/atlas/agent.ts:1-15`),
  * so this branch is placed first among the family branches. The predicate is
- * narrow - a `gemini` substring on the normalised last segment - so it stays
- * disjoint from every pre-existing predicate.
+ * narrow - a `gemini` substring on the normalised last segment - so no provider
+ * model id in use today matches it together with a kimi, gpt, claude or glm id;
+ * a synthetic id containing both tokens would resolve to gemini, which is why
+ * the branch sits first.
  */
 function isGemini(name: string): boolean {
   return name.includes("gemini")

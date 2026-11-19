@@ -18,7 +18,8 @@
  *   - <boundaries> 411-428                  (do vs delegate)
  *   - <critical_overrides> 430-452          (hard rules)
  *   - <post_delegation_rule> 454-466        (tick the checkbox)
- *   - <boulder_completion_response> 468-496 (final report; the waiting half is dropped)
+ *   - <boulder_completion_response> 468-496 plus the close of <workflow> 354-374
+ *     (final report shape; the "wait for the nudge" half is dropped)
  *
  * Two V1 sections describe subsystems this harness does not have: the shared
  * note-taking directory and the completion notification. Their behaviour is folded
