@@ -91,6 +91,12 @@ Register as kimi-k2-7: outcome-first, decide once, sufficient beats complete.
 - Exploration budget: stop when the target file set is known or sources converge.
 - Tiered verification: cheap gate for a trivial edit; full rigor for shipped behavior.
 - Token economy: trim ceremony, never evidence.`,
+  /**
+   * Sisyphus has no Gemini delta: V1's Sisyphus variant table has no Gemini
+   * body, so a Gemini-routed Sisyphus request gets the base doctrine unchanged.
+   * The key exists because `FamilyId` is a shared union (Atlas routes Gemini).
+   */
+  gemini: "",
   fallback: "",
 }
 
@@ -112,5 +118,6 @@ export const FAMILY_OPTIONS: Record<FamilyId, FamilyOptions> = {
   "claude-opus-4-8": { maxTokens: 64000 },
   "claude-opus-4-7": { maxTokens: 64000 },
   "glm-5-2": { maxTokens: 64000 },
+  gemini: { maxTokens: 64000 },
   fallback: { maxTokens: 64000 },
 }

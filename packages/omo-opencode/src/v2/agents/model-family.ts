@@ -1,6 +1,6 @@
 /**
- * Model-family routing for the Sisyphus doctrine (plan v2-sisyphus-orchestration-port,
- * todo 6).
+ * Model-family routing for the agent doctrines (plan v2-sisyphus-orchestration-port,
+ * todo 6; the `gemini` family was added by plan v2-atlas-orchestration-port, todo 3).
  *
  * The precedence chain is transcribed line for line from V1 so the two lines never
  * disagree about which overlay a model gets. V1 sources:
@@ -24,6 +24,7 @@ export type FamilyId =
   | "claude-opus-4-8"
   | "claude-opus-4-7"
   | "glm-5-2"
+  | "gemini"
   | "fallback"
 
 export const FAMILY_IDS = [
@@ -37,6 +38,7 @@ export const FAMILY_IDS = [
   "claude-opus-4-8",
   "claude-opus-4-7",
   "glm-5-2",
+  "gemini",
   "fallback",
 ] as const satisfies readonly FamilyId[]
 
@@ -96,10 +98,23 @@ function isGptNative(name: string): boolean {
   return GPT_NATIVE_RE.test(name)
 }
 
+/**
+ * Gemini family. V1's Atlas variant table checks Gemini BEFORE any Kimi
+ * variant (`packages/prompts-core/src/atlas-prompts.ts:11-26`; the same order
+ * documented in `omo-v1/dev:packages/omo-opencode/src/agents/atlas/agent.ts:1-15`),
+ * so this branch is placed first among the family branches. The predicate is
+ * narrow - a `gemini` substring on the normalised last segment - so it stays
+ * disjoint from every pre-existing predicate.
+ */
+function isGemini(name: string): boolean {
+  return name.includes("gemini")
+}
+
 export function resolveModelFamily(modelId: string): FamilyId {
   const name = extractModelName(modelId)
   const claude = claudeName(name)
 
+  if (isGemini(name)) return "gemini"
   if (isKimiK3(name)) return "kimi-k3"
   if (isKimiK27(name)) return "kimi-k2-7"
   if (isKimi(name)) return "kimi-k2-6"

@@ -16,14 +16,14 @@ describe("FAMILY_OVERLAYS", () => {
     expect(overlay).toBe("")
   })
 
-  test("every family has an overlay, and only the fallback is empty", () => {
+  test("every family has an overlay, and only the fallback and gemini are empty", () => {
     // given the family tuple
     // when each overlay is inspected
     const empty = FAMILY_IDS.filter((family) => FAMILY_OVERLAYS[family] === "")
 
-    // then every family is present and only fallback is empty
+    // then every family is present and only fallback and gemini are empty
     expect(Object.keys(FAMILY_OVERLAYS).sort()).toEqual([...FAMILY_IDS].sort())
-    expect(empty).toEqual(["fallback"])
+    expect([...empty].sort()).toEqual(["fallback", "gemini"])
   })
 
   test("fable reuses the opus-4-8 overlay verbatim", () => {
